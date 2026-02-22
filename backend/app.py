@@ -21,7 +21,7 @@ CORS(app)
 
 # ================= GEMINI SETUP =================
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-pro")
+model = genai.GenerativeModel("models/gemini-2.5-flash")
 
 # ================= GOOGLE OAUTH =================
 google_bp = make_google_blueprint(
@@ -53,7 +53,8 @@ def init_db():
 init_db()
 
 # ================= GLOBAL STORAGE =================
-document_text = ""
+# We avoid global variables for user-specific data to prevent privacy leaks.
+# Each user will have their own folder in 'uploads/'.
 
 # ================= ROUTES =================
 @app.route("/")
@@ -145,26 +146,38 @@ def upload_file():
     if "user" not in session:
         return jsonify({"message": "Unauthorized"}), 403
 
-    global document_text
+    user_email = session["user"]
+    user_folder = os.path.join("uploads", user_email)
 
     if "file" not in request.files:
         return jsonify({"message": "No file uploaded"}), 400
 
     file = request.files["file"]
-    filepath = os.path.join("uploads", file.filename)
+    if file.filename == "":
+        return jsonify({"message": "No file selected"}), 400
 
-    if not os.path.exists("uploads"):
-        os.makedirs("uploads")
+    if not os.path.exists(user_folder):
+        os.makedirs(user_folder)
 
+    filepath = os.path.join(user_folder, file.filename)
     file.save(filepath)
 
+    # Extract text and save it to a companion file for privacy and performance
     extracted_text = ""
-    with pdfplumber.open(filepath) as pdf:
-        for page in pdf.pages:
-            extracted_text += page.extract_text() or ""
-
-    document_text = extracted_text
-    return jsonify({"message": "File uploaded successfully"})
+    try:
+        if file.filename.lower().endswith(".pdf"):
+            with pdfplumber.open(filepath) as pdf:
+                for page in pdf.pages:
+                    extracted_text += page.extract_text() or ""
+        
+        # Save extracted text to a hidden file for this user
+        text_filepath = filepath + ".txt"
+        with open(text_filepath, "w", encoding="utf-8") as f:
+            f.write(extracted_text)
+            
+        return jsonify({"message": "File uploaded successfully"})
+    except Exception as e:
+        return jsonify({"message": f"Error processing file: {str(e)}"}), 500
 
 # ================= LIST FILES =================
 @app.route("/files", methods=["GET"])
@@ -172,13 +185,17 @@ def list_files():
     if "user" not in session:
         return jsonify({"message": "Unauthorized"}), 403
     
-    if not os.path.exists("uploads"):
+    user_email = session["user"]
+    user_folder = os.path.join("uploads", user_email)
+
+    if not os.path.exists(user_folder):
         return jsonify([])
         
     files = []
-    for filename in os.listdir("uploads"):
-        filepath = os.path.join("uploads", filename)
-        if os.path.isfile(filepath):
+    for filename in os.listdir(user_folder):
+        filepath = os.path.join(user_folder, filename)
+        # Only show the original files, not the extracted text files
+        if os.path.isfile(filepath) and not filename.endswith(".txt"):
             stats = os.stat(filepath)
             files.append({
                 "name": filename,
@@ -193,9 +210,14 @@ def delete_file(filename):
     if "user" not in session:
         return jsonify({"message": "Unauthorized"}), 403
     
-    filepath = os.path.join("uploads", filename)
+    user_email = session["user"]
+    filepath = os.path.join("uploads", user_email, filename)
+    text_filepath = filepath + ".txt"
+
     if os.path.exists(filepath):
         os.remove(filepath)
+        if os.path.exists(text_filepath):
+            os.remove(text_filepath)
         return jsonify({"message": "File deleted successfully"})
     else:
         return jsonify({"message": "File not found"}), 404
@@ -203,22 +225,55 @@ def delete_file(filename):
 # ================= ASK QUESTION =================
 @app.route("/ask", methods=["POST"])
 def ask_question():
-    global document_text
-
     if "user" not in session:
         return jsonify({"answer": "Unauthorized"}), 403
 
-    if not document_text:
+    user_email = session["user"]
+    user_folder = os.path.join("uploads", user_email)
+
+    if not os.path.exists(user_folder):
         return jsonify({"answer": "Please upload a document first."})
+
+    # Find the most recently uploaded text file for this user
+    text_files = [f for f in os.listdir(user_folder) if f.endswith(".txt")]
+    if not text_files:
+        return jsonify({"answer": "No extracted text found. Please re-upload your document."})
+    
+    # Get the latest one
+    latest_text_file = max([os.path.join(user_folder, f) for f in text_files], key=os.path.getmtime)
+    
+    with open(latest_text_file, "r", encoding="utf-8") as f:
+        document_text = f.read()
 
     data = request.json
     question = data.get("question")
 
     prompt = f"""
-    Answer the question based only on the document below.
+    You are an expert assistant. Based on the document content provided and the user's question:
+    1. Provide a direct, detailed answer based ONLY on the document.
+    2. Suggest 3 "Practice Resources" (Official documentation, GitHub repos, or interactive labs).
+    3. Suggest 3 "Video Tutorials" (High-quality YouTube search queries or well-known educational channels).
+
+    CRITICAL: Avoid providing specific video IDs (like /watch?v=...) unless you are 100% certain they are permanent. 
+    Instead, prefer search-based URLs which are always active, for example:
+    - YouTube: "https://www.youtube.com/results?search_query=topic+tutorial"
+    - Documentation: "https://aws.amazon.com/search/?searchQuery=topic"
+
+    Return the response ONLY as a JSON object with this structure:
+    {{
+        "answer": "your answer here",
+        "resources": {{
+            "practice": [
+                {{ "title": "Resource Title", "desc": "Short description", "link": "https://..." }}
+            ],
+            "videos": [
+                {{ "title": "Video Title", "desc": "Short description", "link": "https://..." }}
+            ]
+        }}
+    }}
 
     Document:
-    {document_text[:12000]}
+    {str(document_text)[:12000]}
 
     Question:
     {question}
@@ -226,9 +281,11 @@ def ask_question():
 
     try:
         response = model.generate_content(prompt)
-        return jsonify({"answer": response.text})
-    except Exception:
-        return jsonify({"answer": "AI Error occurred."})
+        # Try to parse JSON from the response
+        text = response.text.replace("```json", "").replace("```", "").strip()
+        return jsonify(text)
+    except Exception as e:
+        return jsonify({"answer": f"AI Error occurred: {str(e)}", "resources": {"practice": [], "videos": []}})
 
 # ================= LOGOUT =================
 @app.route("/logout")

@@ -33,7 +33,7 @@
         /* ================= NAVIGATION ================= */
         nav {
             background: var(--white);
-            padding: 15px 50px;
+            padding: 10px 50px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -50,7 +50,7 @@
         }
 
         .logo img {
-            height: 40px;
+            height: 120px;
             width: auto;
         }
 
@@ -325,6 +325,98 @@
             line-height: 1.6;
             font-size: 15px;
             color: #444;
+            margin-bottom: 25px;
+        }
+
+        /* ================= RESOURCE SECTIONS ================= */
+        .resources-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .resources-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .resource-section h3 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #333;
+        }
+
+        .resource-section.practice h3 i {
+            color: #5c6bc0;
+        }
+
+        .resource-section.videos h3 i {
+            color: #ef5350;
+        }
+
+        .resource-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+            text-decoration: none;
+            color: inherit;
+            transition: 0.3s;
+            border: 1px solid #eee;
+        }
+
+        .resource-section.practice .resource-card {
+            background: #e8eaf6;
+            border-color: #c5cae9;
+        }
+
+        .resource-section.videos .resource-card {
+            background: #ffebee;
+            border-color: #ffcdd2;
+        }
+
+        .resource-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .res-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .resource-section.practice .res-icon {
+            color: #3f51b5;
+        }
+
+        .resource-section.videos .res-icon {
+            color: #d32f2f;
+        }
+
+        .res-content h4 {
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: #333;
+        }
+
+        .res-content p {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
         }
 
         /* ================= LOADER ================= */
@@ -515,8 +607,20 @@
                 <div class="ai-body" id="answerBox">
                     <!-- AI response will appear here -->
                 </div>
+
+                <div class="resources-grid" id="resourcesGrid" style="display: none;">
+                    <div class="resource-section practice">
+                        <h3><i class="fas fa-book-open"></i> Practice Resources</h3>
+                        <div id="practiceList"></div>
+                    </div>
+                    <div class="resource-section videos">
+                        <h3><i class="fas fa-play-circle"></i> Video Tutorials</h3>
+                        <div id="videoList"></div>
+                    </div>
+                </div>
             </div>
         </div>
+    </div>
     </div>
 
     <div class="container" id="librarySection">
@@ -741,11 +845,15 @@
             const answerBox = document.getElementById("answerBox");
             const aiResponse = document.getElementById("aiResponse");
             const loader = document.getElementById("loader");
+            const resourcesGrid = document.getElementById("resourcesGrid");
+            const practiceList = document.getElementById("practiceList");
+            const videoList = document.getElementById("videoList");
 
             if (!question) return;
 
             // Show loader
             aiResponse.style.display = "none";
+            resourcesGrid.style.display = "none";
             loader.style.display = "flex";
 
             try {
@@ -757,11 +865,45 @@
                     body: JSON.stringify({ question })
                 });
 
-                const data = await response.json();
+                const rawData = await response.json();
+                let data;
+
+                try {
+                    // The backend returns a JSON string, so we parse it
+                    data = JSON.parse(rawData);
+                } catch (e) {
+                    // Fallback if not JSON
+                    data = { answer: rawData, resources: { practice: [], videos: [] } };
+                }
 
                 loader.style.display = "none";
                 aiResponse.style.display = "block";
                 answerBox.innerText = data.answer;
+
+                // Render Resources if they exist
+                if (data.resources && (data.resources.practice.length > 0 || data.resources.videos.length > 0)) {
+                    resourcesGrid.style.display = "grid";
+
+                    practiceList.innerHTML = data.resources.practice.map(res => `
+                        <a href="${res.link}" target="_blank" class="resource-card">
+                            <div class="res-icon"><i class="fas fa-external-link-alt"></i></div>
+                            <div class="res-content">
+                                <h4>${res.title}</h4>
+                                <p>${res.desc}</p>
+                            </div>
+                        </a>
+                    `).join("");
+
+                    videoList.innerHTML = data.resources.videos.map(res => `
+                        <a href="${res.link}" target="_blank" class="resource-card">
+                            <div class="res-icon"><i class="fas fa-play"></i></div>
+                            <div class="res-content">
+                                <h4>${res.title}</h4>
+                                <p>${res.desc}</p>
+                            </div>
+                        </a>
+                    `).join("");
+                }
 
             } catch (error) {
                 loader.style.display = "none";
