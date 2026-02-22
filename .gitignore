@@ -1,0 +1,13 @@
+# Python dependencies
+venv/
+__pycache__/
+*.py[cod]
+
+# Sensitive data
+backend/.env
+backend/users.db
+backend/uploads/
+
+# OS files
+.DS_Store
+Thumbs.db

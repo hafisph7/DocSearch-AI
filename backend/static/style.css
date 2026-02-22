@@ -1,0 +1,207 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #f6f5f7;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+/* ================= LOGO ================= */
+
+.logo {
+    position: absolute;
+    top: 20px;
+    left: 30px;
+}
+
+.logo img {
+    width: 240px;
+    height: auto;
+}
+
+/* ================= CONTAINER ================= */
+
+.container {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 14px 28px rgba(0,0,0,0.25),
+                0 10px 10px rgba(0,0,0,0.22);
+    position: relative;
+    overflow: hidden;
+    width: 800px;
+    max-width: 100%;
+    min-height: 500px;
+}
+
+/* ================= FORM CONTAINERS ================= */
+
+.form-container {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 50%;
+    transition: all 0.6s ease-in-out;
+}
+
+.sign-in-container {
+    left: 0;
+    z-index: 2;
+}
+
+.sign-up-container {
+    left: 0;
+    opacity: 0;
+    z-index: 1;
+}
+
+/* Slide Animation */
+.container.right-panel-active .sign-in-container {
+    transform: translateX(100%);
+}
+
+.container.right-panel-active .sign-up-container {
+    transform: translateX(100%);
+    opacity: 1;
+    z-index: 5;
+}
+
+/* ================= FORM STYLE ================= */
+
+form {
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    padding: 60px 50px;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+form h1 {
+    margin-bottom: 15px;
+}
+
+form span {
+    font-size: 13px;
+    margin-bottom: 15px;
+}
+
+input {
+    background: #eee;
+    border: none;
+    padding: 12px;
+    margin: 8px 0;
+    width: 100%;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+button {
+    border-radius: 20px;
+    border: none;
+    padding: 10px 45px;
+    background: #ff4b2b;
+    color: #fff;
+    margin-top: 15px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    background: #e03e24;
+}
+
+button.ghost {
+    background: transparent;
+    border: 2px solid #fff;
+}
+
+/* ================= SOCIAL ICONS ================= */
+
+.social-icons {
+    margin: 15px 0;
+}
+
+.social-icons a {
+    border: 1px solid #ddd;
+    border-radius: 50%;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 5px;
+    height: 40px;
+    width: 40px;
+    color: #333;
+    text-decoration: none;
+    transition: 0.3s;
+}
+
+.social-icons a:hover {
+    background: #ff4b2b;
+    color: #fff;
+}
+
+/* ================= OVERLAY ================= */
+
+.overlay-container {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 50%;
+    height: 100%;
+    overflow: hidden;
+    transition: transform 0.6s ease-in-out;
+    z-index: 100;
+}
+
+.container.right-panel-active .overlay-container {
+    transform: translateX(-100%);
+}
+
+.overlay {
+    background: linear-gradient(to right, #ff4b2b, #ff416c);
+    color: #fff;
+    position: relative;
+    left: -100%;
+    height: 100%;
+    width: 200%;
+    transition: transform 0.6s ease-in-out;
+}
+
+.container.right-panel-active .overlay {
+    transform: translateX(50%);
+}
+
+.overlay-panel {
+    position: absolute;
+    width: 50%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;   /* vertical center */
+    align-items: center;       /* horizontal center */
+    text-align: center;
+    padding: 0 40px;
+}
+
+.overlay-panel h1 {
+    font-size: 32px;
+    margin-bottom: 15px;
+}
+
+.overlay-panel p {
+    font-size: 14px;
+    margin-bottom: 25px;
+}
+
+.overlay-right {
+    right: 0;
+}
