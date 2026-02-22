@@ -21,7 +21,7 @@ CORS(app)
 
 # ================= GEMINI SETUP =================
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("models/gemini-2.5-flash")
+model = genai.GenerativeModel("models/gemini-flash-latest")
 
 # ================= GOOGLE OAUTH =================
 google_bp = make_google_blueprint(
@@ -234,16 +234,18 @@ def ask_question():
     if not os.path.exists(user_folder):
         return jsonify({"answer": "Please upload a document first."})
 
-    # Find the most recently uploaded text file for this user
+    # Find all extracted text files for this user
     text_files = [f for f in os.listdir(user_folder) if f.endswith(".txt")]
     if not text_files:
-        return jsonify({"answer": "No extracted text found. Please re-upload your document."})
+        return jsonify({"answer": "No extracted text found. Please upload your documents again."})
     
-    # Get the latest one
-    latest_text_file = max([os.path.join(user_folder, f) for f in text_files], key=os.path.getmtime)
+    # Combine text from all documents (with a limit to prevent prompt overflow)
+    all_text = []
+    for f in text_files:
+        with open(os.path.join(user_folder, f), "r", encoding="utf-8") as file:
+            all_text.append(file.read())
     
-    with open(latest_text_file, "r", encoding="utf-8") as f:
-        document_text = f.read()
+    document_text = "\n\n".join(all_text)
 
     data = request.json
     question = data.get("question")
@@ -254,12 +256,9 @@ def ask_question():
     2. Suggest 3 "Practice Resources" (Official documentation, GitHub repos, or interactive labs).
     3. Suggest 3 "Video Tutorials" (High-quality YouTube search queries or well-known educational channels).
 
-    CRITICAL: Avoid providing specific video IDs (like /watch?v=...) unless you are 100% certain they are permanent. 
-    Instead, prefer search-based URLs which are always active, for example:
-    - YouTube: "https://www.youtube.com/results?search_query=topic+tutorial"
-    - Documentation: "https://aws.amazon.com/search/?searchQuery=topic"
+    CRITICAL: Avoid providing specific video IDs. Instead, use search-based URLs.
 
-    Return the response ONLY as a JSON object with this structure:
+    Return the response ONLY as a JSON object with this EXACT structure:
     {{
         "answer": "your answer here",
         "resources": {{
@@ -273,7 +272,7 @@ def ask_question():
     }}
 
     Document:
-    {str(document_text)[:12000]}
+    {str(document_text)[:8000]}
 
     Question:
     {question}
@@ -283,7 +282,18 @@ def ask_question():
         response = model.generate_content(prompt)
         # Try to parse JSON from the response
         text = response.text.replace("```json", "").replace("```", "").strip()
-        return jsonify(text)
+        
+        try:
+            import json
+            data = json.loads(text)
+            # Ensure the structure matches what the frontend expects
+            if "answer" not in data:
+                data = {"answer": text, "resources": {"practice": [], "videos": []}}
+            return jsonify(data)
+        except Exception:
+            # Fallback if AI didn't return valid JSON
+            return jsonify({"answer": text, "resources": {"practice": [], "videos": []}})
+
     except Exception as e:
         return jsonify({"answer": f"AI Error occurred: {str(e)}", "resources": {"practice": [], "videos": []}})
 

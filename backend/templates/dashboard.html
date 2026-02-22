@@ -868,17 +868,28 @@
                 const rawData = await response.json();
                 let data;
 
-                try {
-                    // The backend returns a JSON string, so we parse it
-                    data = JSON.parse(rawData);
-                } catch (e) {
-                    // Fallback if not JSON
-                    data = { answer: rawData, resources: { practice: [], videos: [] } };
+                // Handle the case where the response is already a JSON object or needs parsing
+                if (typeof rawData === 'string') {
+                    try {
+                        data = JSON.parse(rawData);
+                    } catch (e) {
+                        data = { answer: rawData, resources: { practice: [], videos: [] } };
+                    }
+                } else {
+                    data = rawData;
                 }
 
                 loader.style.display = "none";
                 aiResponse.style.display = "block";
-                answerBox.innerText = data.answer;
+
+                // Set the answer text safely
+                if (data && data.answer) {
+                    answerBox.innerText = data.answer;
+                } else if (typeof data === 'string') {
+                    answerBox.innerText = data;
+                } else {
+                    answerBox.innerText = "I'm sorry, I couldn't process that request.";
+                }
 
                 // Render Resources if they exist
                 if (data.resources && (data.resources.practice.length > 0 || data.resources.videos.length > 0)) {
