@@ -166,6 +166,40 @@ def upload_file():
     document_text = extracted_text
     return jsonify({"message": "File uploaded successfully"})
 
+# ================= LIST FILES =================
+@app.route("/files", methods=["GET"])
+def list_files():
+    if "user" not in session:
+        return jsonify({"message": "Unauthorized"}), 403
+    
+    if not os.path.exists("uploads"):
+        return jsonify([])
+        
+    files = []
+    for filename in os.listdir("uploads"):
+        filepath = os.path.join("uploads", filename)
+        if os.path.isfile(filepath):
+            stats = os.stat(filepath)
+            files.append({
+                "name": filename,
+                "size": f"{stats.st_size / (1024 * 1024):.2f} MB",
+                "date": os.path.getmtime(filepath)
+            })
+    return jsonify(files)
+
+# ================= DELETE FILE =================
+@app.route("/delete/<filename>", methods=["DELETE"])
+def delete_file(filename):
+    if "user" not in session:
+        return jsonify({"message": "Unauthorized"}), 403
+    
+    filepath = os.path.join("uploads", filename)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+        return jsonify({"message": "File deleted successfully"})
+    else:
+        return jsonify({"message": "File not found"}), 404
+
 # ================= ASK QUESTION =================
 @app.route("/ask", methods=["POST"])
 def ask_question():

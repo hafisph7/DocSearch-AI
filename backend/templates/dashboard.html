@@ -1,234 +1,774 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>DocSearch AI Dashboard</title>
+<html lang="en">
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | DocSearch AI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        body {
-            margin: 0;
-            font-family: "Segoe UI", sans-serif;
-            background: #f4f6f9;
+        :root {
+            --primary-color: #ff4b2b;
+            --secondary-color: #ff416c;
+            --bg-color: #f6f5f7;
+            --text-color: #333;
+            --white: #ffffff;
+            --shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+            --gradient: linear-gradient(to right, var(--primary-color), var(--secondary-color));
         }
 
-        /* ================= HEADER ================= */
-        .header {
-            background: linear-gradient(135deg, #ff4b2b, #ff416c);
-            padding: 18px 50px;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+        }
+
+        /* ================= NAVIGATION ================= */
+        nav {
+            background: var(--white);
+            padding: 15px 50px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
 
-        .header-left {
+        .nav-left {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 20px;
         }
 
-        .logo-img {
-            height: 45px;
+        .logo img {
+            height: 40px;
             width: auto;
         }
 
-        .dashboard-title {
-            font-size: 32px;
-            font-weight: 600;
-            color: white;
-            line-height: 1;
-        }
-
-        .logout-btn {
-            background: white;
-            color: #ff416c;
-            border: none;
-            padding: 10px 25px;
-            border-radius: 30px;
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-color);
             font-weight: 500;
-            cursor: pointer;
+            margin-right: 20px;
             transition: 0.3s;
         }
 
-        .logout-btn:hover {
-            background: #ffe5ec;
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+
+        .btn-logout {
+            background: var(--gradient);
+            color: var(--white);
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+
+        .btn-logout:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        /* ================= HERO SECTION ================= */
+        .hero {
+            background: linear-gradient(rgba(255, 75, 43, 0.05), rgba(255, 65, 108, 0.05));
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .search-container {
+            max-width: 700px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 18px 25px 18px 55px;
+            border-radius: 35px;
+            border: none;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            font-size: 16px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .search-bar:focus {
+            box-shadow: 0 15px 35px rgba(255, 75, 43, 0.2);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
+            font-size: 18px;
+        }
+
+        .hero-actions {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn-primary {
+            background: var(--gradient);
+            color: var(--white);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: 0.3s;
+        }
+
+        .btn-secondary {
+            background: var(--white);
+            color: var(--text-color);
+            border: 1px solid #ddd;
+            padding: 12px 30px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+
+        .btn-primary:hover,
+        .btn-secondary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
 
         /* ================= MAIN CONTENT ================= */
         .container {
-            width: 75%;
-            margin: 50px auto;
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 20px;
         }
 
-        .card {
-            background: white;
-            padding: 35px;
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .section-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        /* ================= UPLOAD AREA ================= */
+        .upload-dropzone {
+            background: var(--white);
+            border: 2px dashed #ddd;
             border-radius: 15px;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.08);
-            margin-bottom: 40px;
-            transition: 0.3s;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-        }
-
-        .section-title {
-            font-size: 20px;
-            margin-bottom: 15px;
-            color: #444;
-            font-weight: 600;
-        }
-
-        input[type="file"],
-        input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            margin-top: 10px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            font-size: 14px;
-            outline: none;
-            transition: 0.2s;
-        }
-
-        input:focus {
-            border-color: #ff416c;
-            box-shadow: 0 0 0 2px rgba(255,65,108,0.2);
-        }
-
-        button.primary {
-            margin-top: 20px;
-            padding: 12px 35px;
-            border: none;
-            border-radius: 30px;
-            background: linear-gradient(to right, #ff4b2b, #ff416c);
-            color: white;
-            font-size: 14px;
-            font-weight: 500;
+            padding: 40px;
+            text-align: center;
             cursor: pointer;
             transition: 0.3s;
+            margin-bottom: 40px;
         }
 
-        button.primary:hover {
-            opacity: 0.9;
-            transform: scale(1.03);
+        .upload-dropzone:hover {
+            border-color: var(--primary-color);
+            background-color: rgba(255, 75, 43, 0.02);
         }
 
-        .result-box {
-            margin-top: 20px;
-            padding: 20px;
-            background: #f9fafc;
-            border-radius: 10px;
-            border: 1px solid #eee;
-            min-height: 60px;
+        .upload-icon {
+            font-size: 50px;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            opacity: 0.8;
+        }
+
+        .upload-dropzone h3 {
+            margin-bottom: 10px;
+        }
+
+        .upload-dropzone p {
+            color: #777;
             font-size: 14px;
-            white-space: pre-wrap;
+        }
+
+        /* ================= DOC CARDS ================= */
+        .doc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 50px;
+        }
+
+        .doc-card {
+            background: var(--white);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            transition: 0.3s;
+            position: relative;
+            border: 1px solid transparent;
+        }
+
+        .doc-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 75, 43, 0.2);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .doc-info {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .doc-icon {
+            background: rgba(255, 75, 43, 0.1);
+            color: var(--primary-color);
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .doc-details h4 {
+            font-size: 16px;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+
+        .doc-details p {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .doc-delete {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #ff4d4d;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: 0.3s;
+        }
+
+        .doc-delete:hover {
+            opacity: 1;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #e1f5fe;
+            color: #039be5;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+
+        /* ================= EMPTY STATE ================= */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-icon {
+            font-size: 60px;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+
+        /* ================= AI CHAT ================= */
+        .ai-response-container {
+            background: var(--white);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            box-shadow: var(--shadow);
+            display: none;
+        }
+
+        .ai-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .ai-body {
+            line-height: 1.6;
+            font-size: 15px;
+            color: #444;
+        }
+
+        /* ================= LOADER ================= */
+        .loader-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 30px;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loader-text {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* ================= CUSTOM MODAL ================= */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: var(--white);
+            padding: 30px;
+            border-radius: 20px;
+            width: 400px;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            transform: scale(0.8);
+            transition: 0.3s;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-icon {
+            font-size: 50px;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .modal-text {
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        /* ================= TOAST NOTIFICATIONS ================= */
+        .toast-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 3000;
+        }
+
+        .toast {
+            background: var(--white);
+            color: var(--text-color);
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 5px solid var(--primary-color);
+            transform: translateX(120%);
+            transition: 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .toast.active {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            border-left-color: #2ecc71;
+        }
+
+        .toast.error {
+            border-left-color: #e74c3c;
+        }
+
+        .toast-icon {
+            font-size: 18px;
+        }
+
+        .toast.success .toast-icon {
+            color: #2ecc71;
+        }
+
+        .toast.error .toast-icon {
+            color: #e74c3c;
         }
     </style>
 </head>
 
 <body>
 
-<!-- ================= HEADER ================= -->
-<div class="header">
-    <div class="header-left">
-        <img src="{{ url_for('static', filename='logo.png') }}" class="logo-img">
-        <span class="dashboard-title">Dashboard</span>
-    </div>
+    <nav>
+        <div class="nav-left">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+            </div>
+            <div class="nav-links">
+                <a href="/dashboard"><i class="fas fa-home"></i> Home</a>
+            </div>
+        </div>
+        <form action="/logout" method="GET">
+            <button class="btn-logout">Logout</button>
+        </form>
+    </nav>
 
-    <form action="/logout" method="GET">
-        <button class="logout-btn">Logout</button>
-    </form>
-</div>
+    <div class="hero">
+        <div class="search-container">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" class="search-bar" id="questionInput" placeholder="Search your documents with AI...">
+        </div>
+        <div class="hero-actions">
+            <button class="btn-primary" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-file-upload"></i> Upload Documents
+            </button>
+            <button class="btn-secondary" onclick="scrollToLibrary()">View Library</button>
+        </div>
 
-<!-- ================= MAIN CONTENT ================= -->
-<div class="container">
+        <!-- AI Response Section -->
+        <div class="container">
+            <div id="loader" class="loader-container">
+                <div class="loader"></div>
+                <p class="loader-text">Searching with AI...</p>
+            </div>
 
-    <!-- Upload Section -->
-    <div class="card">
-        <div class="section-title">📄 Upload Document</div>
-
-        <input type="file" id="fileInput">
-        <button class="primary" onclick="uploadFile()">Upload Document</button>
-
-        <div class="result-box" id="uploadResult">
-            Upload a PDF document to begin.
+            <div id="aiResponse" class="ai-response-container">
+                <div class="ai-header">
+                    <i class="fas fa-magic"></i> AI Insight
+                </div>
+                <div class="ai-body" id="answerBox">
+                    <!-- AI response will appear here -->
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Ask Section -->
-    <div class="card">
-        <div class="section-title">💬 Ask Question From Document</div>
+    <div class="container" id="librarySection">
+        <div class="section-header">
+            <div class="header-info">
+                <h2>Document Library</h2>
+                <p id="docCount">0 documents</p>
+            </div>
+        </div>
 
-        <input type="text" id="questionInput" placeholder="Ask something about your uploaded document...">
-        <button class="primary" onclick="askQuestion()">Ask AI</button>
+        <div class="upload-dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+            <h3>Drop your files here</h3>
+            <p>or click to browse</p>
+            <p style="font-size: 11px; margin-top: 5px;">Supports PDF, DOCX, and TXT files</p>
+            <input type="file" id="fileInput" onchange="uploadFile()">
+        </div>
 
-        <div class="result-box" id="answerBox">
-            AI response will appear here.
+        <div id="noDocs" class="empty-state">
+            <i class="far fa-folder-open empty-icon"></i>
+            <h3>No documents yet</h3>
+            <p>Upload your first document to get started</p>
+        </div>
+
+        <div class="doc-grid" id="docGrid" style="display: none;">
+            <!-- Document items will be injected here -->
         </div>
     </div>
 
-</div>
+    <!-- Custom Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <div class="modal-icon" id="modalIcon">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="modal-title" id="modalTitle">Are you sure?</div>
+            <div class="modal-text" id="modalText">This action cannot be undone.</div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" id="modalConfirmBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
 
-<script>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
 
-async function uploadFile() {
-    const fileInput = document.getElementById("fileInput");
-    const resultBox = document.getElementById("uploadResult");
+    <script>
+        let documents = [];
 
-    if (!fileInput.files.length) {
-        resultBox.innerText = "Please select a file.";
-        return;
-    }
+        // Load files when page loads
+        document.addEventListener("DOMContentLoaded", loadFiles);
 
-    const formData = new FormData();
-    formData.append("file", fileInput.files[0]);
+        async function loadFiles() {
+            try {
+                const response = await fetch("/files");
+                const data = await response.json();
+                documents = data;
+                renderDocuments();
+            } catch (error) {
+                console.error("Failed to load files:", error);
+            }
+        }
 
-    resultBox.innerText = "Uploading and extracting text...";
+        function scrollToLibrary() {
+            document.getElementById('librarySection').scrollIntoView({ behavior: 'smooth' });
+        }
 
-    try {
-        const response = await fetch("/upload", {
-            method: "POST",
-            body: formData
+        async function uploadFile() {
+            const fileInput = document.getElementById("fileInput");
+            if (!fileInput.files.length) return;
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const dropzone = document.getElementById("dropzone");
+            const originalContent = dropzone.innerHTML;
+            dropzone.innerHTML = `<div class="loader" style="margin: 0 auto;"></div><p style="margin-top:10px">Uploading ${file.name}...</p>`;
+
+            try {
+                const response = await fetch("/upload", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                // Refresh the file list
+                await loadFiles();
+
+                // Reset dropzone
+                dropzone.innerHTML = originalContent;
+                showToast(data.message, "success");
+
+            } catch (error) {
+                showToast("Upload failed.", "error");
+                dropzone.innerHTML = originalContent;
+            }
+        }
+
+        function renderDocuments() {
+            const grid = document.getElementById("docGrid");
+            const noDocs = document.getElementById("noDocs");
+            const docCount = document.getElementById("docCount");
+
+            docCount.innerText = `${documents.length} documents`;
+
+            if (documents.length > 0) {
+                noDocs.style.display = "none";
+                grid.style.display = "grid";
+                grid.innerHTML = documents.map((doc, index) => {
+                    const uploadDate = new Date(doc.date * 1000).toLocaleString();
+                    return `
+                        <div class="doc-card">
+                            <i class="fas fa-trash doc-delete" onclick="confirmDelete('${doc.name}')"></i>
+                            <div class="doc-info">
+                                <div class="doc-icon">
+                                    <i class="far fa-file-pdf"></i>
+                                </div>
+                                <div class="doc-details">
+                                    <h4>${doc.name}</h4>
+                                    <p>${doc.size}</p>
+                                </div>
+                            </div>
+                            <span class="tag">Technology</span>
+                            <p style="font-size: 11px; color: #999; margin-top: 10px;">Uploaded ${uploadDate}</p>
+                        </div>
+                    `;
+                }).join("");
+            } else {
+                noDocs.style.display = "block";
+                grid.style.display = "none";
+            }
+        }
+
+        function confirmDelete(filename) {
+            showModal(
+                "Delete Document",
+                `Are you sure you want to delete <br><b>${filename}</b>?`,
+                async () => {
+                    await deleteDoc(filename);
+                }
+            );
+        }
+
+        async function deleteDoc(filename) {
+            try {
+                const response = await fetch(`/delete/${filename}`, {
+                    method: "DELETE"
+                });
+
+                if (response.ok) {
+                    await loadFiles();
+                    showToast("File deleted successfully", "success");
+                    closeModal();
+                } else {
+                    showToast("Failed to delete file.", "error");
+                }
+            } catch (error) {
+                console.error("Delete failed:", error);
+                showToast("Server error occurred.", "error");
+            }
+        }
+
+        // Professional UI Helper Functions
+        function showToast(message, type = "success") {
+            const container = document.getElementById("toastContainer");
+            const toast = document.createElement("div");
+            toast.className = `toast ${type}`;
+
+            const icon = type === "success" ? "fa-check-circle" : "fa-exclamation-triangle";
+
+            toast.innerHTML = `
+                <i class="fas ${icon} toast-icon"></i>
+                <span class="toast-message">${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            // Trigger animation
+            setTimeout(() => toast.classList.add("active"), 10);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove("active");
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
+        let modalResolve = null;
+
+        function showModal(title, text, onConfirm) {
+            const overlay = document.getElementById("modalOverlay");
+            document.getElementById("modalTitle").innerHTML = title;
+            document.getElementById("modalText").innerHTML = text;
+
+            const confirmBtn = document.getElementById("modalConfirmBtn");
+
+            // Deep clone to remove old listeners
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            newConfirmBtn.onclick = onConfirm;
+
+            overlay.classList.add("active");
+        }
+
+        function closeModal() {
+            document.getElementById("modalOverlay").classList.remove("active");
+        }
+
+        // Handle Search (AI Ask)
+        document.getElementById("questionInput").addEventListener("keypress", function (e) {
+            if (e.key === "Enter") {
+                askQuestion();
+            }
         });
 
-        const data = await response.json();
-        resultBox.innerText = data.message;
+        async function askQuestion() {
+            const question = document.getElementById("questionInput").value;
+            const answerBox = document.getElementById("answerBox");
+            const aiResponse = document.getElementById("aiResponse");
+            const loader = document.getElementById("loader");
 
-    } catch (error) {
-        resultBox.innerText = "Upload failed.";
-    }
-}
+            if (!question) return;
 
-async function askQuestion() {
-    const question = document.getElementById("questionInput").value;
-    const answerBox = document.getElementById("answerBox");
+            // Show loader
+            aiResponse.style.display = "none";
+            loader.style.display = "flex";
 
-    if (!question) {
-        answerBox.innerText = "Please enter a question.";
-        return;
-    }
+            try {
+                const response = await fetch("/ask", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ question })
+                });
 
-    answerBox.innerText = "Processing with Gemini AI...";
+                const data = await response.json();
 
-    try {
-        const response = await fetch("/ask", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ question })
-        });
+                loader.style.display = "none";
+                aiResponse.style.display = "block";
+                answerBox.innerText = data.answer;
 
-        const data = await response.json();
-        answerBox.innerText = data.answer;
-
-    } catch (error) {
-        answerBox.innerText = "AI request failed.";
-    }
-}
-
-</script>
-
+            } catch (error) {
+                loader.style.display = "none";
+                showToast("AI request failed.", "error");
+            }
+        }
+    </script>
 </body>
+
 </html>
