@@ -22,9 +22,9 @@
                 <h1>Create Account</h1>
 
                 <div class="social-icons">
-                    <a href="#"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#"><i class="fab fa-google"></i></a>
-                    <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="{{ url_for('facebook_login', mode='signup') }}"><i class="fab fa-facebook-f"></i></a>
+                    <a href="{{ url_for('google_login', mode='signup') }}"><i class="fab fa-google"></i></a>
+                    <a href="{{ url_for('linkedin_login', mode='signup') }}"><i class="fab fa-linkedin-in"></i></a>
                 </div>
 
                 <span>or use your email for registration</span>
@@ -46,12 +46,11 @@
                 <h1>Sign In</h1>
 
                 <div class="social-icons">
-                    <a href="#"><i class="fab fa-facebook-f"></i></a>
-                    <a href="{{ url_for('google.login') }}">
+                    <a href="{{ url_for('facebook_login', mode='signin') }}"><i class="fab fa-facebook-f"></i></a>
+                    <a href="{{ url_for('google_login', mode='signin') }}">
                         <i class="fab fa-google"></i>
                     </a>
-
-                    <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="{{ url_for('linkedin_login', mode='signin') }}"><i class="fab fa-linkedin-in"></i></a>
                 </div>
 
                 <span>or use your account</span>
@@ -72,16 +71,25 @@
                 <div class="overlay-panel overlay-left">
                     <h1>Welcome Back!</h1>
                     <p>To keep connected with us please login</p>
-                    <button class="ghost" id="signIn">SIGN IN</button>
+                    <button class="ghost" id="signIn" type="button">SIGN IN</button>
                 </div>
                 <div class="overlay-panel overlay-right">
                     <h1>Hello, Friend!</h1>
                     <p>Enter your personal details and start journey with us</p>
-                    <button class="ghost" id="signUp">SIGN UP</button>
+                    <button class="ghost" id="signUp" type="button">SIGN UP</button>
                 </div>
             </div>
         </div>
 
+    </div>
+
+    <!-- SUCCESS OVERLAY -->
+    <div class="success-overlay" id="successOverlay">
+        <div class="success-box">
+            <i class="fas fa-check-circle"></i>
+            <h2 id="successTitle">Success!</h2>
+            <p id="successMessage">Directing you to your dashboard...</p>
+        </div>
     </div>
 
     <script>
@@ -93,11 +101,64 @@
         const signInButton = document.getElementById('signIn');
 
         signUpButton.addEventListener('click', () => {
+            console.log("Switching to Sign Up panel");
             container.classList.add("right-panel-active");
         });
 
         signInButton.addEventListener('click', () => {
+            console.log("Switching to Sign In panel");
             container.classList.remove("right-panel-active");
+        });
+
+        // Check for social login success on page load
+        window.addEventListener('load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isSocialSuccess = urlParams.get('social_success') === 'true';
+            const mode = urlParams.get('mode') || 'signin';
+
+            if (isSocialSuccess) {
+                console.log(`Social success detected! Mode: ${mode}`);
+
+                // If they were on the Sign Up panel, make sure we show it before the popup
+                if (mode === 'signup') {
+                    container.classList.add("right-panel-active");
+                }
+
+                // Remove the parameters from URL immediately
+                const newUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+
+                const successMsg = mode === 'signup' ? "Account Created! Welcome to DocSearch AI." : "Login Successful! Welcome back.";
+                showSuccess(successMsg, "/dashboard");
+            }
+        });
+
+        /* ================= HELPERS ================= */
+
+        function showSuccess(message, redirectUrl = null) {
+            const overlay = document.getElementById("successOverlay");
+            document.getElementById("successMessage").textContent = message;
+            overlay.style.display = "flex";
+
+            if (redirectUrl) {
+                // Redirect after exactly 1.5 seconds
+                setTimeout(() => {
+                    window.location.href = redirectUrl;
+                }, 1500);
+            } else {
+                setTimeout(() => {
+                    overlay.style.display = "none";
+                }, 2500);
+            }
+        }
+
+        // Show a simple processing state for Social Icons
+        document.querySelectorAll('.social-icons a').forEach(link => {
+            link.addEventListener('click', function (e) {
+                // Don't show the success overlay yet, just indicate loading
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                this.style.pointerEvents = 'none';
+            });
         });
 
         /* ================= SIGN UP ================= */
@@ -132,13 +193,17 @@
 
                 loader.style.display = "none";
                 btn.disabled = false;
-                message.textContent = data.message;
-                message.style.display = "block";
 
                 if (response.ok) {
-                    message.classList.add("success");
+                    showSuccess("Account Created Successfully! Please Sign In.");
+                    // Switch to sign in panel
+                    setTimeout(() => {
+                        container.classList.remove("right-panel-active");
+                    }, 2000);
                 } else {
-                    message.classList.add("error");
+                    message.textContent = data.message;
+                    message.className = "message error";
+                    message.style.display = "block";
                 }
 
             } catch (error) {
@@ -181,14 +246,7 @@
 
                 if (response.ok) {
                     loader.style.display = "none";
-                    message.textContent = data.message;
-                    message.className = "message success";
-                    message.style.display = "block";
-
-                    // Delay redirect to show success message
-                    setTimeout(() => {
-                        window.location.href = "/dashboard";
-                    }, 1500);
+                    showSuccess("Login Successful! Welcome back.", "/dashboard");
                 } else {
                     loader.style.display = "none";
                     btn.disabled = false;

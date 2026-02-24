@@ -31,8 +31,8 @@ body {
 .container {
     background: #fff;
     border-radius: 12px;
-    box-shadow: 0 14px 28px rgba(0,0,0,0.25),
-                0 10px 10px rgba(0,0,0,0.22);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25),
+        0 10px 10px rgba(0, 0, 0, 0.22);
     position: relative;
     overflow: hidden;
     width: 800px;
@@ -145,8 +145,22 @@ button.ghost {
 }
 
 .social-icons a:hover {
-    background: #ff4b2b;
     color: #fff;
+}
+
+.social-icons a .fa-facebook-f:hover {
+    background: #3b5998;
+    border-color: #3b5998;
+}
+
+.social-icons a .fa-google:hover {
+    background: #db4437;
+    border-color: #db4437;
+}
+
+.social-icons a .fa-linkedin-in:hover {
+    background: #0077b5;
+    border-color: #0077b5;
 }
 
 /* ================= OVERLAY ================= */
@@ -186,8 +200,10 @@ button.ghost {
     height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: center;   /* vertical center */
-    align-items: center;       /* horizontal center */
+    justify-content: center;
+    /* vertical center */
+    align-items: center;
+    /* horizontal center */
     text-align: center;
     padding: 0 40px;
 }
@@ -214,7 +230,8 @@ button.ghost {
     width: 80%;
     border-radius: 5px;
     font-size: 14px;
-    display: none; /* Hidden by default */
+    display: none;
+    /* Hidden by default */
 }
 
 .message.error {
@@ -236,11 +253,66 @@ button.ghost {
     width: 30px;
     height: 30px;
     animation: spin 1s linear infinite;
-    display: none; /* Hidden by default */
+    display: none;
+    /* Hidden by default */
     margin: 10px 0;
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* ================= SUCCESS OVERLAY ================= */
+
+.success-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    backdrop-filter: blur(8px);
+}
+
+.success-box {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    transform: scale(0.7);
+    animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.success-box i {
+    font-size: 80px;
+    color: #2ecc71;
+    margin-bottom: 20px;
+}
+
+.success-box h2 {
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 28px;
+}
+
+.success-box p {
+    color: #666;
+    font-size: 16px;
+}
+
+@keyframes scaleIn {
+    to {
+        transform: scale(1);
+    }
 }

@@ -2,9 +2,11 @@ import os
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
-from flask import Flask, request, jsonify, render_template, redirect, session
+from flask import Flask, request, jsonify, render_template, redirect, session, url_for
 from flask_cors import CORS
 from flask_dance.contrib.google import make_google_blueprint, google
+from flask_dance.contrib.facebook import make_facebook_blueprint, facebook
+from flask_dance.contrib.linkedin import make_linkedin_blueprint, linkedin
 import sqlite3
 import bcrypt
 import pdfplumber
@@ -16,24 +18,42 @@ load_dotenv()
 
 # ================= FLASK APP =================
 app = Flask(__name__)
-app.secret_key = "super_secret_key_change_this"
+app.secret_key = "super_secret_key_hafis"
+app.config.update(
+    SESSION_COOKIE_NAME="docsearch_session",
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_PATH="/",
+)
 CORS(app)
 
 # ================= GEMINI SETUP =================
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("models/gemini-flash-latest")
 
-# ================= GOOGLE OAUTH =================
+# ================= OAUTH BLUEPRINTS =================
+# Google
 google_bp = make_google_blueprint(
     client_id=os.getenv("GOOGLE_CLIENT_ID"),
     client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
-    scope=[
-        "openid",
-        "https://www.googleapis.com/auth/userinfo.email",
-        "https://www.googleapis.com/auth/userinfo.profile",
-    ],
+    scope=["openid", "email", "profile"],
 )
 app.register_blueprint(google_bp, url_prefix="/login")
+
+# Facebook
+facebook_bp = make_facebook_blueprint(
+    client_id=os.getenv("FACEBOOK_CLIENT_ID"),
+    client_secret=os.getenv("FACEBOOK_CLIENT_SECRET"),
+    scope=["email"],
+)
+app.register_blueprint(facebook_bp, url_prefix="/login")
+
+# LinkedIn
+linkedin_bp = make_linkedin_blueprint(
+    client_id=os.getenv("LINKEDIN_CLIENT_ID"),
+    client_secret=os.getenv("LINKEDIN_CLIENT_SECRET"),
+    scope=["openid", "profile", "email"],
+)
+app.register_blueprint(linkedin_bp, url_prefix="/login")
 
 # ================= DATABASE INIT =================
 def init_db():
@@ -71,18 +91,21 @@ def signup():
 
     hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
 
+    conn = sqlite3.connect("users.db", timeout=10)
     try:
-        conn = sqlite3.connect("users.db")
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
             (name, email, hashed_password)
         )
         conn.commit()
-        conn.close()
         return jsonify({"message": "User Registered Successfully"})
     except sqlite3.IntegrityError:
         return jsonify({"message": "Email already exists"}), 400
+    except Exception as e:
+        return jsonify({"message": f"Database error: {str(e)}"}), 500
+    finally:
+        conn.close()
 
 # ================= SIGN IN =================
 @app.route("/signin", methods=["POST"])
@@ -91,52 +114,95 @@ def signin():
     email = data.get("email")
     password = data.get("password")
 
-    conn = sqlite3.connect("users.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT password FROM users WHERE email = ?", (email,))
-    user = cursor.fetchone()
-    conn.close()
+    conn = sqlite3.connect("users.db", timeout=10)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT password FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
+        if user and bcrypt.checkpw(password.encode("utf-8"), user[0]):
+            session["user"] = email
+            return jsonify({"message": "Login Successful"})
+        else:
+            return jsonify({"message": "Invalid Credentials"}), 400
+    finally:
+        conn.close()
 
-    if user and bcrypt.checkpw(password.encode("utf-8"), user[0]):
+# ================= SOCIAL LOGIN ROUTES =================
+
+def handle_social_login(email, name, provider, mode="signin"):
+    if not email:
+        # Fallback if provider doesn't return email
+        email = f"{provider}_user_{name.replace(' ', '_').lower()}@example.com"
+        
+    conn = sqlite3.connect("users.db", timeout=10)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
+
+        if not user:
+            cursor.execute(
+                "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+                (name, email, f"{provider}_oauth".encode("utf-8"))
+            )
+            conn.commit()
+
         session["user"] = email
-        return jsonify({"message": "Login Successful"})
-    else:
-        return jsonify({"message": "Invalid Credentials"}), 400
+        session.modified = True
+        print(f"DEBUG: Social login success for {email}. Mode: {mode}. Redirecting for animation.")
+        return redirect(f"/?social_success=true&mode={mode}")
+    finally:
+        conn.close()
 
-# ================= GOOGLE LOGIN =================
 @app.route("/google_login")
 def google_login():
+    mode = request.args.get("mode", "signin")
     if not google.authorized:
-        return redirect("/login/google")
-
+        return redirect(url_for("google.login", next=url_for("google_login", mode=mode), prompt="select_account"))
+    
     resp = google.get("/oauth2/v2/userinfo")
+    if not resp.ok:
+        return "Failed to fetch user info from Google", 400
+        
     user_info = resp.json()
+    return handle_social_login(user_info["email"], user_info.get("name", "Google User"), "google", mode=mode)
 
-    email = user_info["email"]
-    name = user_info.get("name", "Google User")
+@app.route("/facebook_login")
+def facebook_login():
+    mode = request.args.get("mode", "signin")
+    if not facebook.authorized:
+        return redirect(url_for("facebook.login", next=url_for("facebook_login", mode=mode), auth_type="reauthenticate"))
+    
+    resp = facebook.get("/me?fields=id,name,email")
+    if not resp.ok:
+        return "Failed to fetch user info from Facebook", 400
+        
+    user_info = resp.json()
+    return handle_social_login(user_info.get("email"), user_info.get("name", "Facebook User"), "facebook", mode=mode)
 
-    conn = sqlite3.connect("users.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
-    user = cursor.fetchone()
-
-    if not user:
-        cursor.execute(
-            "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-            (name, email, b"google_oauth")
-        )
-        conn.commit()
-
-    conn.close()
-
-    session["user"] = email
-    return redirect("/dashboard")
+@app.route("/linkedin_login")
+def linkedin_login():
+    mode = request.args.get("mode", "signin")
+    if not linkedin.authorized:
+        # prompt="login" forces LinkedIn to show the login screen
+        return redirect(url_for("linkedin.login", next=url_for("linkedin_login", mode=mode), prompt="login"))
+    
+    resp = linkedin.get("userinfo")
+    if not resp.ok:
+        return "Failed to fetch user info from LinkedIn", 400
+        
+    user_info = resp.json()
+    email = user_info.get("email")
+    name = user_info.get("name", "LinkedIn User")
+    
+    return handle_social_login(email, name, "linkedin", mode=mode)
 
 # ================= DASHBOARD =================
 @app.route("/dashboard")
 def dashboard():
+    print(f"DEBUG: Accessing dashboard. Session user: {session.get('user')}")
     if "user" not in session:
-        return redirect("/")
+        return redirect(url_for("index"))
     return render_template("dashboard.html")
 
 
@@ -272,7 +338,7 @@ def ask_question():
     }}
 
     Document:
-    {str(document_text)[:8000]}
+    {document_text[:8000]}
 
     Question:
     {question}
@@ -301,9 +367,16 @@ def ask_question():
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect("/")
+    return redirect(url_for("index"))
 
 
 # ================= RUN =================
 if __name__ == "__main__":
+    # Print the exact redirect URIs for the user to copy-paste
+    print("\n--- OAUTH REDIRECT URIS (Copy these exactly to your portals) ---")
+    print("Google:   http://localhost:5000/login/google/authorized")
+    print("Facebook: http://localhost:5000/login/facebook/authorized")
+    print("LinkedIn: http://localhost:5000/login/linkedin/authorized")
+    print("----------------------------------------------------------------\n")
+    
     app.run(debug=True, port=5000)
