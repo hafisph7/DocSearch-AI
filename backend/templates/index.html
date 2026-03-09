@@ -57,11 +57,42 @@
 
                 <input type="email" id="signinEmail" placeholder="Email" required>
                 <input type="password" id="signinPassword" placeholder="Password" required>
+                <a href="#" id="forgotPasswordLink">Forgot your password?</a>
 
                 <div id="signinLoader" class="loader"></div>
                 <div id="signinMessage" class="message"></div>
 
                 <button type="submit" id="signinBtn">SIGN IN</button>
+            </form>
+
+            <!-- FORGOT PASSWORD FORM (Initially Hidden) -->
+            <form id="forgotPasswordForm" style="display: none;">
+                <h1>Reset Password</h1>
+                <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Enter your email to receive a password reset link.</p>
+                
+                <input type="email" id="forgotEmail" placeholder="Email" required>
+                
+                <div id="forgotLoader" class="loader"></div>
+                <div id="forgotMessage" class="message"></div>
+
+                <div style="display: flex; gap: 10px; width: 100%; justify-content: center;">
+                    <button type="button" id="backToSignIn" class="ghost" style="color: #ff4b2b; border-color: #ff4b2b; padding: 10px 25px;">Back</button>
+                    <button type="submit" id="forgotBtn" style="padding: 10px 25px;">SEND LINK</button>
+                </div>
+            </form>
+
+            <!-- RESET PASSWORD FORM (Initially Hidden) -->
+            <form id="resetPasswordForm" style="display: none;">
+                <h1>New Password</h1>
+                <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Enter your new password below.</p>
+                
+                <input type="hidden" id="resetEmail">
+                <input type="password" id="newPassword" placeholder="New Password" required minlength="6">
+                
+                <div id="resetLoader" class="loader"></div>
+                <div id="resetMessage" class="message"></div>
+
+                <button type="submit" id="resetBtn">UPDATE PASSWORD</button>
             </form>
         </div>
 
@@ -115,6 +146,19 @@
             const urlParams = new URLSearchParams(window.location.search);
             const isSocialSuccess = urlParams.get('social_success') === 'true';
             const mode = urlParams.get('mode') || 'signin';
+            const email = urlParams.get('email');
+
+            if (mode === 'reset' && email) {
+                // Show the reset password form
+                signinForm.style.display = 'none';
+                document.getElementById('resetPasswordForm').style.display = 'flex';
+                document.getElementById('resetEmail').value = email;
+                
+                // Remove parameters from URL
+                const newUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+                return;
+            }
 
             if (isSocialSuccess) {
                 console.log(`Social success detected! Mode: ${mode}`);
@@ -211,6 +255,118 @@
                 btn.disabled = false;
                 message.textContent = "Server Error";
                 message.className = "message error";
+                message.style.display = "block";
+            }
+        });
+
+        /* ================= FORGOT PASSWORD ================= */
+
+        const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+        const backToSignIn = document.getElementById('backToSignIn');
+        const signinForm = document.getElementById('signinForm');
+        const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+
+        forgotPasswordLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            signinForm.style.display = 'none';
+            forgotPasswordForm.style.display = 'flex';
+        });
+
+        backToSignIn.addEventListener('click', () => {
+            forgotPasswordForm.style.display = 'none';
+            signinForm.style.display = 'flex';
+        });
+
+        forgotPasswordForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+
+            const email = document.getElementById("forgotEmail").value;
+            const loader = document.getElementById("forgotLoader");
+            const message = document.getElementById("forgotMessage");
+            const btn = document.getElementById("forgotBtn");
+
+            // Reset and Show Loader
+            message.style.display = "none";
+            message.className = "message";
+            loader.style.display = "block";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch("/forgot-password", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+
+                loader.style.display = "none";
+                btn.disabled = false;
+
+                if (response.ok) {
+                    showSuccess("Password reset link sent! Please check your email.");
+                    setTimeout(() => {
+                        forgotPasswordForm.style.display = 'none';
+                        signinForm.style.display = 'flex';
+                    }, 2000);
+                } else {
+                    message.textContent = data.message;
+                    message.className = "message error";
+                    message.style.display = "block";
+                }
+
+            } catch (error) {
+                loader.style.display = "none";
+                btn.disabled = false;
+                message.textContent = "Server Error";
+                message.className = "message error";
+                message.style.display = "block";
+            }
+        });
+
+        /* ================= RESET PASSWORD ================= */
+
+        document.getElementById("resetPasswordForm").addEventListener("submit", async function (e) {
+            e.preventDefault();
+
+            const email = document.getElementById("resetEmail").value;
+            const new_password = document.getElementById("newPassword").value;
+            const loader = document.getElementById("resetLoader");
+            const message = document.getElementById("resetMessage");
+            const btn = document.getElementById("resetBtn");
+
+            message.style.display = "none";
+            loader.style.display = "block";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch("/update-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, new_password })
+                });
+
+                const data = await response.json();
+                loader.style.display = "none";
+                btn.disabled = false;
+
+                if (response.ok) {
+                    showSuccess("Password Updated! You can now sign in.");
+                    setTimeout(() => {
+                        document.getElementById('resetPasswordForm').style.display = 'none';
+                        signinForm.style.display = 'flex';
+                    }, 2000);
+                } else {
+                    message.textContent = data.message;
+                    message.className = "message error";
+                    message.style.display = "block";
+                }
+            } catch (error) {
+                loader.style.display = "none";
+                btn.disabled = false;
+                message.textContent = "Server Error";
                 message.style.display = "block";
             }
         });

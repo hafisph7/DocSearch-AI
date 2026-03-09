@@ -7,6 +7,7 @@ from flask_cors import CORS
 from flask_dance.contrib.google import make_google_blueprint, google
 from flask_dance.contrib.facebook import make_facebook_blueprint, facebook
 from flask_dance.contrib.linkedin import make_linkedin_blueprint, linkedin
+from flask_mail import Mail, Message
 import sqlite3
 import bcrypt
 import pdfplumber
@@ -25,6 +26,16 @@ app.config.update(
     SESSION_COOKIE_PATH="/",
 )
 CORS(app)
+
+# ================= MAIL SETUP =================
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
+
+mail = Mail(app)
 
 # ================= GEMINI SETUP =================
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
@@ -124,6 +135,65 @@ def signin():
             return jsonify({"message": "Login Successful"})
         else:
             return jsonify({"message": "Invalid Credentials"}), 400
+    finally:
+        conn.close()
+
+# ================= FORGOT PASSWORD =================
+@app.route("/forgot-password", methods=["POST"])
+def forgot_password():
+    data = request.json
+    email = data.get("email")
+
+    conn = sqlite3.connect("users.db", timeout=10)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
+
+        if user:
+            # Send a real email
+            try:
+                msg = Message(
+                    "Password Reset - DocSearch AI",
+                    recipients=[email]
+                )
+                msg.body = f"""Hello,
+
+You requested a password reset for your DocSearch AI account.
+To reset your password, please click the link below:
+
+http://localhost:5000/?mode=reset&email={email}
+
+If you did not request this, please ignore this email.
+"""
+                mail.send(msg)
+                print(f"DEBUG: Password reset email sent to {email}")
+                return jsonify({"message": "Password reset link sent to your email."})
+            except Exception as e:
+                print(f"DEBUG: Error sending email: {str(e)}")
+                return jsonify({"message": "Error sending email. Please check your configuration."}), 500
+        else:
+            return jsonify({"message": "Email not found"}), 404
+    finally:
+        conn.close()
+
+# ================= UPDATE PASSWORD =================
+@app.route("/update-password", methods=["POST"])
+def update_password():
+    data = request.json
+    email = data.get("email")
+    new_password = data.get("new_password")
+
+    hashed_password = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt())
+
+    conn = sqlite3.connect("users.db", timeout=10)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_password, email))
+        conn.commit()
+        return jsonify({"message": "Password updated successfully"})
+    except Exception as e:
+        return jsonify({"message": f"Database error: {str(e)}"}), 500
     finally:
         conn.close()
 
@@ -317,31 +387,35 @@ def ask_question():
     question = data.get("question")
 
     prompt = f"""
-    You are an expert assistant. Based on the document content provided and the user's question:
-    1. Provide a direct, detailed answer based ONLY on the document.
-    2. Suggest 3 "Practice Resources" (Official documentation, GitHub repos, or interactive labs).
-    3. Suggest 3 "Video Tutorials" (High-quality YouTube search queries or well-known educational channels).
+    You are an expert technical AI assistant. Use the provided document as context, but prioritize answering the user's question accurately.
 
-    CRITICAL: Avoid providing specific video IDs. Instead, use search-based URLs.
+    Document Content:
+    {document_text[:8000]}
 
-    Return the response ONLY as a JSON object with this EXACT structure:
+    User's Question:
+    {question}
+
+    Your Task:
+    1. Direct Answer: Answer the question based on the document. If the document doesn't contain the answer, answer based on your general knowledge but mention it's not in the document.
+    2. Practice Resources: Suggest 3 HIGHLY RELEVANT links (Official docs, GitHub, or specialized sites) that directly help the user with their SPECIFIC QUESTION ({question}).
+    3. Video Tutorials: Suggest 3 YouTube search-based URLs that are precisely targeted to the user's question.
+
+    LINK RULES:
+    - For practice resources, use direct URLs to official documentation or relevant GitHub search results.
+    - For videos, use URLs like: https://www.youtube.com/results?search_query=...
+
+    Return ONLY a JSON object:
     {{
-        "answer": "your answer here",
+        "answer": "your detailed response here",
         "resources": {{
             "practice": [
-                {{ "title": "Resource Title", "desc": "Short description", "link": "https://..." }}
+                {{ "title": "Specific Title", "desc": "How this relates to '{question}'", "link": "https://..." }}
             ],
             "videos": [
-                {{ "title": "Video Title", "desc": "Short description", "link": "https://..." }}
+                {{ "title": "Video Topic", "desc": "Why this is useful for '{question}'", "link": "https://www.youtube.com/results?search_query=..." }}
             ]
         }}
     }}
-
-    Document:
-    {document_text[:8000]}
-
-    Question:
-    {question}
     """
 
     try:
