@@ -24,8 +24,10 @@ app.config.update(
     SESSION_COOKIE_NAME="docsearch_session",
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_PATH="/",
+    SESSION_COOKIE_DOMAIN=None,
+    PERMANENT_SESSION_LIFETIME=3600
 )
-CORS(app)
+CORS(app, supports_credentials=True)
 
 # ================= MAIL SETUP =================
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -90,6 +92,13 @@ init_db()
 # ================= ROUTES =================
 @app.route("/")
 def index():
+    user = session.get("user")
+    social_success = request.args.get("social_success")
+    print(f"DEBUG: Index access. Session user: {user}, Social Success: {social_success}")
+    
+    if user and not social_success:
+        return redirect(url_for("dashboard"))
+        
     return render_template("index.html")
 
 # ================= SIGN UP =================
@@ -218,54 +227,136 @@ def handle_social_login(email, name, provider, mode="signin"):
             conn.commit()
 
         session["user"] = email
+        session.permanent = True
         session.modified = True
-        print(f"DEBUG: Social login success for {email}. Mode: {mode}. Redirecting for animation.")
-        return redirect(f"/?social_success=true&mode={mode}")
+        
+        # Explicitly save session before redirecting
+        print(f"DEBUG: Social Login Success for {email}. Session ID before redirect: {session.get('user')}")
+        return redirect(f"/?social_success=true&mode={mode}&provider={provider}")
     finally:
         conn.close()
 
 @app.route("/google_login")
 def google_login():
     mode = request.args.get("mode", "signin")
-    if not google.authorized:
-        return redirect(url_for("google.login", next=url_for("google_login", mode=mode), prompt="select_account"))
+    print(f"DEBUG: Initializing Google Login. Mode: {mode}")
     
-    resp = google.get("/oauth2/v2/userinfo")
-    if not resp.ok:
-        return "Failed to fetch user info from Google", 400
+    # Force fresh login by clearing session tokens directly
+    session.pop('google_oauth_token', None)
+            
+    return redirect(url_for("google.login", next=url_for("google_login_callback", mode=mode), prompt="select_account"))
+
+@app.route("/google_login_callback")
+def google_login_callback():
+    mode = request.args.get("mode", "signin")
+    if not google.authorized:
+        return redirect(url_for("google.login", next=url_for("google_login_callback", mode=mode), prompt="select_account"))
+    
+    try:
+        print("DEBUG: Google Authorized. Fetching user info...")
+        resp = google.get("/oauth2/v2/userinfo")
         
-    user_info = resp.json()
-    return handle_social_login(user_info["email"], user_info.get("name", "Google User"), "google", mode=mode)
+        if not resp.ok:
+            print(f"DEBUG: Google fetch failed. Status: {resp.status_code}, Body: {resp.text}")
+            # If the token is invalid/expired, clear it and try again
+            if resp.status_code == 401:
+                del app.blueprints['google'].token
+                return redirect(url_for("google_login", mode=mode))
+            return f"Failed to fetch user info from Google: {resp.text}", 400
+            
+        user_info = resp.json()
+        print(f"DEBUG: Google Info Received: {user_info.get('email')}")
+        return handle_social_login(user_info["email"], user_info.get("name", "Google User"), "google", mode=mode)
+    except Exception as e:
+        print(f"DEBUG: Google Exception: {str(e)}")
+        # Clear token on any oauth error to force a fresh login next time
+        if "token_expired" in str(e).lower() or "expired" in str(e).lower():
+            del app.blueprints['google'].token
+            return redirect(url_for("google_login", mode=mode))
+        return f"Social Login Error: {str(e)}", 500
 
 @app.route("/facebook_login")
 def facebook_login():
     mode = request.args.get("mode", "signin")
-    if not facebook.authorized:
-        return redirect(url_for("facebook.login", next=url_for("facebook_login", mode=mode), auth_type="reauthenticate"))
+    print(f"DEBUG: Starting Facebook Login. Mode: {mode}")
     
-    resp = facebook.get("/me?fields=id,name,email")
-    if not resp.ok:
-        return "Failed to fetch user info from Facebook", 400
+    if 'facebook' in app.blueprints:
+        try:
+            del app.blueprints['facebook'].token
+        except:
+            pass
+            
+    return redirect(url_for("facebook.login", next=url_for("facebook_login_callback", mode=mode), auth_type="reauthenticate"))
+
+@app.route("/facebook_login_callback")
+def facebook_login_callback():
+    mode = request.args.get("mode", "signin")
+    if not facebook.authorized:
+        return redirect(url_for("facebook.login", next=url_for("facebook_login_callback", mode=mode), auth_type="reauthenticate"))
+    
+    try:
+        print("DEBUG: Facebook Authorized. Fetching user info...")
+        resp = facebook.get("/me?fields=id,name,email")
         
-    user_info = resp.json()
-    return handle_social_login(user_info.get("email"), user_info.get("name", "Facebook User"), "facebook", mode=mode)
+        if not resp.ok:
+            print(f"DEBUG: Facebook fetch failed. Status: {resp.status_code}, Body: {resp.text}")
+            if resp.status_code == 401:
+                del app.blueprints['facebook'].token
+                return redirect(url_for("facebook_login", mode=mode))
+            return f"Failed to fetch user info from Facebook: {resp.text}", 400
+            
+        user_info = resp.json()
+        print(f"DEBUG: Facebook Info Received: {user_info.get('email')}")
+        return handle_social_login(user_info.get("email"), user_info.get("name", "Facebook User"), "facebook", mode=mode)
+    except Exception as e:
+        print(f"DEBUG: Facebook Exception: {str(e)}")
+        if "token_expired" in str(e).lower() or "expired" in str(e).lower():
+            del app.blueprints['facebook'].token
+            return redirect(url_for("facebook_login", mode=mode))
+        return f"Social Login Error: {str(e)}", 500
 
 @app.route("/linkedin_login")
 def linkedin_login():
     mode = request.args.get("mode", "signin")
+    print(f"DEBUG: Starting LinkedIn Login. Mode: {mode}")
+    
+    if 'linkedin' in app.blueprints:
+        try:
+            del app.blueprints['linkedin'].token
+        except:
+            pass
+            
+    return redirect(url_for("linkedin.login", next=url_for("linkedin_login_callback", mode=mode), prompt="login"))
+
+@app.route("/linkedin_login_callback")
+def linkedin_login_callback():
+    mode = request.args.get("mode", "signin")
     if not linkedin.authorized:
-        # prompt="login" forces LinkedIn to show the login screen
-        return redirect(url_for("linkedin.login", next=url_for("linkedin_login", mode=mode), prompt="login"))
+        return redirect(url_for("linkedin.login", next=url_for("linkedin_login_callback", mode=mode), prompt="login"))
     
-    resp = linkedin.get("userinfo")
-    if not resp.ok:
-        return "Failed to fetch user info from LinkedIn", 400
+    try:
+        print("DEBUG: LinkedIn Authorized. Fetching user info...")
+        resp = linkedin.get("userinfo")
         
-    user_info = resp.json()
-    email = user_info.get("email")
-    name = user_info.get("name", "LinkedIn User")
-    
-    return handle_social_login(email, name, "linkedin", mode=mode)
+        if not resp.ok:
+            print(f"DEBUG: LinkedIn fetch failed. Status: {resp.status_code}, Body: {resp.text}")
+            if resp.status_code == 401:
+                del app.blueprints['linkedin'].token
+                return redirect(url_for("linkedin_login", mode=mode))
+            return f"Failed to fetch user info from LinkedIn: {resp.text}", 400
+            
+        user_info = resp.json()
+        email = user_info.get("email")
+        name = user_info.get("name", "LinkedIn User")
+        print(f"DEBUG: LinkedIn Info Received: {email}")
+        
+        return handle_social_login(email, name, "linkedin", mode=mode)
+    except Exception as e:
+        print(f"DEBUG: LinkedIn Exception: {str(e)}")
+        if "token_expired" in str(e).lower() or "expired" in str(e).lower():
+            del app.blueprints['linkedin'].token
+            return redirect(url_for("linkedin_login", mode=mode))
+        return f"Social Login Error: {str(e)}", 500
 
 # ================= DASHBOARD =================
 @app.route("/dashboard")
@@ -420,8 +511,9 @@ def ask_question():
 
     try:
         response = model.generate_content(prompt)
+        ai_text = response.text
         # Try to parse JSON from the response
-        text = response.text.replace("```json", "").replace("```", "").strip()
+        text = ai_text.replace("```json", "").replace("```", "").strip()
         
         try:
             import json
@@ -432,14 +524,22 @@ def ask_question():
             return jsonify(data)
         except Exception:
             # Fallback if AI didn't return valid JSON
-            return jsonify({"answer": text, "resources": {"practice": [], "videos": []}})
+            return jsonify({"answer": ai_text, "resources": {"practice": [], "videos": []}})
 
     except Exception as e:
+        print(f"DEBUG: AI Error: {str(e)}")
         return jsonify({"answer": f"AI Error occurred: {str(e)}", "resources": {"practice": [], "videos": []}})
 
 # ================= LOGOUT =================
 @app.route("/logout")
 def logout():
+    # Clear OAuth tokens
+    for bp in ['google', 'facebook', 'linkedin']:
+        if bp in app.blueprints:
+            try:
+                del app.blueprints[bp].token
+            except:
+                pass
     session.clear()
     return redirect(url_for("index"))
 
@@ -451,6 +551,10 @@ if __name__ == "__main__":
     print("Google:   http://localhost:5000/login/google/authorized")
     print("Facebook: http://localhost:5000/login/facebook/authorized")
     print("LinkedIn: http://localhost:5000/login/linkedin/authorized")
-    print("----------------------------------------------------------------\n")
+    print("****************************************************************")
+    print("🌍 PLEASE OPEN THIS LINK IN YOUR BROWSER:")
+    print("👉 http://localhost:5000")
+    print("****************************************************************\n")
     
-    app.run(debug=True, port=5000)
+    # Use localhost specifically to match OAuth Redirect URIs
+    app.run(debug=True, host='127.0.0.1', port=5000)

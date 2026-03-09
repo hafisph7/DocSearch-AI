@@ -161,7 +161,8 @@
             }
 
             if (isSocialSuccess) {
-                console.log(`Social success detected! Mode: ${mode}`);
+                const provider = urlParams.get('provider') || 'social';
+                console.log(`Social success detected! Mode: ${mode}, Provider: ${provider}`);
 
                 // If they were on the Sign Up panel, make sure we show it before the popup
                 if (mode === 'signup') {
@@ -172,21 +173,31 @@
                 const newUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
 
-                const successMsg = mode === 'signup' ? "Account Created! Welcome to DocSearch AI." : "Login Successful! Welcome back.";
-                showSuccess(successMsg, "/dashboard");
+                const capitalizedProvider = provider.charAt(0).toUpperCase() + provider.slice(1);
+                const successMsg = mode === 'signup' 
+                    ? `Account Created with ${capitalizedProvider}! Welcome to DocSearch AI.` 
+                    : `Login Successful with ${capitalizedProvider}! Welcome back.`;
+                
+                showSuccess(successMsg, "/dashboard?login_success=true");
             }
         });
 
         /* ================= HELPERS ================= */
 
         function showSuccess(message, redirectUrl = null) {
+            console.log("Success detected. Redirecting to:", redirectUrl);
             const overlay = document.getElementById("successOverlay");
-            document.getElementById("successMessage").textContent = message;
+            const successMsg = document.getElementById("successMessage");
+            successMsg.textContent = message;
             overlay.style.display = "flex";
 
             if (redirectUrl) {
+                // Add a backup link just in case
+                successMsg.innerHTML = message + '<br><br><a href="' + redirectUrl + '" style="color: #ff4b2b; font-size: 14px; text-decoration: underline;">Click here if not redirected automatically</a>';
+                
                 // Redirect after exactly 1.5 seconds
                 setTimeout(() => {
+                    console.log("Redirecting to dashboard...");
                     window.location.href = redirectUrl;
                 }, 1500);
             } else {
@@ -402,7 +413,7 @@
 
                 if (response.ok) {
                     loader.style.display = "none";
-                    showSuccess("Login Successful! Welcome back.", "/dashboard");
+                    showSuccess("Login Successful! Welcome back.", "/dashboard?login_success=true");
                 } else {
                     loader.style.display = "none";
                     btn.disabled = false;

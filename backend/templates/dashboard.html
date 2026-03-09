@@ -66,6 +66,41 @@
             color: var(--primary-color);
         }
 
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 12px;
+            background: #f8f9fa;
+            border-radius: 20px;
+            border: 1px solid #eee;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--gradient);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .user-email {
+            font-size: 14px;
+            font-weight: 500;
+            color: #555;
+        }
+
         .btn-logout {
             background: var(--gradient);
             color: var(--white);
@@ -231,6 +266,78 @@
             transform: translateY(-5px);
             border-color: rgba(255, 75, 43, 0.2);
             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .doc-card.selected {
+            border-color: var(--primary-color);
+            background-color: rgba(255, 75, 43, 0.05);
+            box-shadow: 0 10px 20px rgba(255, 75, 43, 0.1);
+        }
+
+        /* Custom Checkbox Styling */
+        .checkbox-container {
+            display: block;
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 10;
+        }
+
+        .checkbox-container input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+
+        .checkmark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 20px;
+            width: 20px;
+            background-color: #fff;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .checkbox-container:hover input ~ .checkmark {
+            border-color: var(--primary-color);
+        }
+
+        .checkbox-container input:checked ~ .checkmark {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+        }
+
+        .checkbox-container input:checked ~ .checkmark:after {
+            display: block;
+        }
+
+        .checkbox-container .checkmark:after {
+            left: 6px;
+            top: 2px;
+            width: 5px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        /* Secondary Select All Checkbox Styling */
+        #selectAllContainer .checkmark {
+            position: relative;
+            display: inline-block;
+            margin-right: 8px;
+            vertical-align: middle;
         }
 
         .doc-info {
@@ -576,9 +683,17 @@
                 <a href="/dashboard"><i class="fas fa-home"></i> Home</a>
             </div>
         </div>
-        <form action="/logout" method="GET">
-            <button class="btn-logout">Logout</button>
-        </form>
+        <div class="nav-right">
+            <div class="user-profile">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <span class="user-email">{{ session['user'] }}</span>
+            </div>
+            <form action="/logout" method="GET" style="margin: 0;">
+                <button class="btn-logout">Logout</button>
+            </form>
+        </div>
     </nav>
 
     <div class="hero">
@@ -627,7 +742,22 @@
         <div class="section-header">
             <div class="header-info">
                 <h2>Document Library</h2>
-                <p id="docCount">0 documents</p>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <p id="docCount">0 documents</p>
+                    <div id="selectAllContainer" style="display: none; align-items: center; margin-left: 20px; cursor: pointer;" onclick="toggleSelectAll()">
+                        <label class="checkbox-container" style="position: relative; top: 0; left: 0; margin-right: 25px;">
+                            <input type="checkbox" id="selectAll" onclick="event.stopPropagation(); toggleSelectAll()">
+                            <span class="checkmark"></span>
+                        </label>
+                        <span style="font-size: 14px; color: #666; user-select: none; font-weight: 500;">Select All</span>
+                    </div>
+                    <div id="selectionActions" style="display: none; align-items: center; gap: 10px;">
+                        <span id="selectedCount" style="font-size: 14px; color: var(--primary-color); font-weight: 600;">0 selected</span>
+                        <button class="btn-logout" style="background: #ff4d4d; padding: 5px 15px; font-size: 13px;" onclick="confirmBulkDelete()">
+                            <i class="fas fa-trash-alt"></i> Delete Selected
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -672,7 +802,19 @@
         let documents = [];
 
         // Load files when page loads
-        document.addEventListener("DOMContentLoaded", loadFiles);
+        document.addEventListener("DOMContentLoaded", () => {
+            loadFiles();
+            
+            // Check for login success
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('login_success') === 'true') {
+                showToast("Welcome to DocSearch AI!", "success");
+                
+                // Clean up URL
+                const newUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+        });
 
         async function loadFiles() {
             try {
@@ -726,23 +868,29 @@
             const grid = document.getElementById("docGrid");
             const noDocs = document.getElementById("noDocs");
             const docCount = document.getElementById("docCount");
+            const selectAllContainer = document.getElementById("selectAllContainer");
 
             docCount.innerText = `${documents.length} documents`;
 
             if (documents.length > 0) {
                 noDocs.style.display = "none";
                 grid.style.display = "grid";
+                selectAllContainer.style.display = "flex";
                 grid.innerHTML = documents.map((doc, index) => {
                     const uploadDate = new Date(doc.date * 1000).toLocaleString();
                     return `
-                        <div class="doc-card">
+                        <div class="doc-card" id="doc-${index}">
+                            <label class="checkbox-container">
+                                <input type="checkbox" class="doc-select" onchange="toggleSelection('${doc.name}', ${index}, this.checked)">
+                                <span class="checkmark"></span>
+                            </label>
                             <i class="fas fa-trash doc-delete" onclick="confirmDelete('${doc.name}')"></i>
-                            <div class="doc-info">
+                            <div class="doc-info" style="margin-top: 15px; margin-left: 10px;">
                                 <div class="doc-icon">
                                     <i class="far fa-file-pdf"></i>
                                 </div>
                                 <div class="doc-details">
-                                    <h4>${doc.name}</h4>
+                                    <h4 title="${doc.name}">${doc.name}</h4>
                                     <p>${doc.size}</p>
                                 </div>
                             </div>
@@ -754,6 +902,7 @@
             } else {
                 noDocs.style.display = "block";
                 grid.style.display = "none";
+                selectAllContainer.style.display = "none";
             }
         }
 
@@ -777,6 +926,8 @@
                     await loadFiles();
                     showToast("File deleted successfully", "success");
                     closeModal();
+                    selectedFiles.delete(filename);
+                    updateSelectionUI();
                 } else {
                     showToast("Failed to delete file.", "error");
                 }
@@ -784,6 +935,99 @@
                 console.error("Delete failed:", error);
                 showToast("Server error occurred.", "error");
             }
+        }
+
+        let selectedFiles = new Set();
+
+        function toggleSelection(filename, index, isChecked) {
+            const card = document.getElementById(`doc-${index}`);
+            if (isChecked) {
+                selectedFiles.add(filename);
+                card.classList.add('selected');
+            } else {
+                selectedFiles.delete(filename);
+                card.classList.remove('selected');
+            }
+            updateSelectionUI();
+        }
+
+        function updateSelectionUI() {
+            const selectionActions = document.getElementById("selectionActions");
+            const selectedCount = document.getElementById("selectedCount");
+            const selectAllCheckbox = document.getElementById("selectAll");
+            
+            if (selectedFiles.size > 0) {
+                selectionActions.style.display = "flex";
+                selectedCount.innerText = `${selectedFiles.size} selected`;
+                
+                // Keep Select All checkbox in sync
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = (selectedFiles.size === documents.length);
+                }
+            } else {
+                selectionActions.style.display = "none";
+                if (selectAllCheckbox) selectAllCheckbox.checked = false;
+            }
+        }
+
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById("selectAll");
+            // If the call came from the container div, toggle the checkbox manually first
+            if (event.currentTarget.id === "selectAllContainer") {
+                selectAllCheckbox.checked = !selectAllCheckbox.checked;
+            }
+            
+            const isChecked = selectAllCheckbox.checked;
+            const checkboxes = document.querySelectorAll(".doc-select");
+            
+            selectedFiles.clear();
+            
+            checkboxes.forEach((cb, index) => {
+                cb.checked = isChecked;
+                const filename = documents[index].name;
+                const card = document.getElementById(`doc-${index}`);
+                
+                if (isChecked) {
+                    selectedFiles.add(filename);
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+            
+            updateSelectionUI();
+        }
+
+        function confirmBulkDelete() {
+            showModal(
+                "Delete Selected Documents",
+                `Are you sure you want to delete <b>${selectedFiles.size}</b> documents? <br>This action cannot be undone.`,
+                async () => {
+                    await bulkDelete();
+                }
+            );
+        }
+
+        async function bulkDelete() {
+            const filesToDelete = Array.from(selectedFiles);
+            let successCount = 0;
+
+            for (const filename of filesToDelete) {
+                try {
+                    const response = await fetch(`/delete/${filename}`, {
+                        method: "DELETE"
+                    });
+                    if (response.ok) successCount++;
+                } catch (error) {
+                    console.error(`Failed to delete ${filename}`, error);
+                }
+            }
+
+            selectedFiles.clear();
+            await loadFiles();
+            showToast(`Successfully deleted ${successCount} files`, successCount > 0 ? "success" : "error");
+            closeModal();
+            updateSelectionUI();
         }
 
         // Professional UI Helper Functions
