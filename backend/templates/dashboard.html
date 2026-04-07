@@ -686,9 +686,13 @@
         <div class="nav-right">
             <div class="user-profile">
                 <div class="user-avatar">
-                    <i class="fas fa-user"></i>
+                    {% if session.get('user_name') %}
+                        {{ session.get('user_name')[0]|upper }}
+                    {% else %}
+                        <i class="fas fa-user"></i>
+                    {% endif %}
                 </div>
-                <span class="user-email">{{ session['user'] }}</span>
+                <span class="user-email">{{ session.get('user_name') or session.get('user') }}</span>
             </div>
             <form action="/logout" method="GET" style="margin: 0;">
                 <button class="btn-logout">Logout</button>
@@ -808,9 +812,13 @@
             // Check for login success
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('login_success') === 'true') {
-                showToast("Welcome to DocSearch AI!", "success");
-                
-                // Clean up URL
+                const name = document.querySelector('.user-email')?.textContent || 'there';
+                showToast(`Welcome back, ${name}! Login successful. 🎉`, "success");
+                const newUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            } else if (urlParams.get('social') === 'true') {
+                const name = document.querySelector('.user-email')?.textContent || 'there';
+                showToast(`Welcome, ${name}! Social login successful. 🎉`, "success");
                 const newUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
             }

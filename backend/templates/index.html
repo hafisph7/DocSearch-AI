@@ -29,9 +29,9 @@
 
                 <span>or use your email for registration</span>
 
-                <input type="text" id="signupName" placeholder="Name" required>
-                <input type="email" id="signupEmail" placeholder="Email" required>
-                <input type="password" id="signupPassword" placeholder="Password" required>
+                <input type="text" id="signupName" name="name" placeholder="Name" required>
+                <input type="email" id="signupEmail" name="email" placeholder="Email" required>
+                <input type="password" id="signupPassword" name="password" placeholder="Password" required>
 
                 <div id="signupLoader" class="loader"></div>
                 <div id="signupMessage" class="message"></div>
@@ -185,19 +185,14 @@
         /* ================= HELPERS ================= */
 
         function showSuccess(message, redirectUrl = null) {
-            console.log("Success detected. Redirecting to:", redirectUrl);
+            console.log("Success detected.", redirectUrl ? "Redirecting to: " + redirectUrl : "");
             const overlay = document.getElementById("successOverlay");
             const successMsg = document.getElementById("successMessage");
             successMsg.textContent = message;
             overlay.style.display = "flex";
 
             if (redirectUrl) {
-                // Add a backup link just in case
-                successMsg.innerHTML = message + '<br><br><a href="' + redirectUrl + '" style="color: #ff4b2b; font-size: 14px; text-decoration: underline;">Click here if not redirected automatically</a>';
-                
-                // Redirect after exactly 1.5 seconds
                 setTimeout(() => {
-                    console.log("Redirecting to dashboard...");
                     window.location.href = redirectUrl;
                 }, 1500);
             } else {
@@ -413,7 +408,7 @@
 
                 if (response.ok) {
                     loader.style.display = "none";
-                    showSuccess("Login Successful! Welcome back.", "/dashboard?login_success=true");
+                    window.location.href = "/dashboard?login_success=true";
                 } else {
                     loader.style.display = "none";
                     btn.disabled = false;

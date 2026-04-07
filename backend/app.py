@@ -22,10 +22,10 @@ app = Flask(__name__)
 app.secret_key = "super_secret_key_hafis"
 app.config.update(
     SESSION_COOKIE_NAME="docsearch_session",
-    SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_PATH="/",
     SESSION_COOKIE_DOMAIN=None,
-    PERMANENT_SESSION_LIFETIME=3600
+    SESSION_COOKIE_SAMESITE="Lax",
+    PERMANENT_SESSION_LIFETIME=2592000  # 30 days to "remember me"
 )
 CORS(app, supports_credentials=True)
 
@@ -44,29 +44,111 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("models/gemini-flash-latest")
 
 # ================= OAUTH BLUEPRINTS =================
-# Google
+from flask_dance.consumer import oauth_authorized
+
+# ---------- helper: save social user to DB & session ----------
+def _save_social_user(email, name, provider):
+    """Upsert the social user into the DB and populate the Flask session."""
+    if not email:
+        email = f"{provider}_{name.replace(' ','_').lower()}@oauth.local"
+
+    conn = sqlite3.connect("users.db", timeout=10)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
+        if not user:
+            cursor.execute(
+                "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+                (name, email, f"{provider}_oauth".encode("utf-8"))
+            )
+            conn.commit()
+            session["user_name"] = name
+        else:
+            session["user_name"] = user[1]
+
+        session["user"] = email
+        session.permanent = True
+        session.modified = True
+        print(f"DEBUG: {provider} login OK — session user set to {email}")
+    finally:
+        conn.close()
+
+# Google blueprint  (redirect_url sends browser to /dashboard after authorized)
 google_bp = make_google_blueprint(
     client_id=os.getenv("GOOGLE_CLIENT_ID"),
     client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
     scope=["openid", "email", "profile"],
+    redirect_url="/dashboard?social=true"
 )
 app.register_blueprint(google_bp, url_prefix="/login")
 
-# Facebook
+@oauth_authorized.connect_via(google_bp)
+def google_logged_in(blueprint, token):
+    """Runs inside Flask-Dance's /login/google/authorized handler.
+    We set the session here and return False so the token is never
+    written to the session cookie (prevents 4 KB overflow)."""
+    if not token:
+        print("DEBUG: Google — no token received")
+        return False
+    try:
+        resp = blueprint.session.get("/oauth2/v2/userinfo")
+        if resp.ok:
+            info = resp.json()
+            _save_social_user(info.get("email", ""), info.get("name", "Google User"), "google")
+        else:
+            print(f"DEBUG: Google userinfo fetch failed: {resp.status_code}")
+    except Exception as exc:
+        print(f"DEBUG: Google signal error: {exc}")
+    return False  # <-- Do NOT store token in session
+
+# Facebook blueprint
 facebook_bp = make_facebook_blueprint(
     client_id=os.getenv("FACEBOOK_CLIENT_ID"),
     client_secret=os.getenv("FACEBOOK_CLIENT_SECRET"),
     scope=["email"],
+    redirect_url="/dashboard?social=true"
 )
 app.register_blueprint(facebook_bp, url_prefix="/login")
 
-# LinkedIn
+@oauth_authorized.connect_via(facebook_bp)
+def facebook_logged_in(blueprint, token):
+    if not token:
+        return False
+    try:
+        resp = blueprint.session.get("/me?fields=id,name,email")
+        if resp.ok:
+            info = resp.json()
+            _save_social_user(info.get("email", ""), info.get("name", "Facebook User"), "facebook")
+        else:
+            print(f"DEBUG: Facebook userinfo fetch failed: {resp.status_code}")
+    except Exception as exc:
+        print(f"DEBUG: Facebook signal error: {exc}")
+    return False
+
+# LinkedIn blueprint
 linkedin_bp = make_linkedin_blueprint(
     client_id=os.getenv("LINKEDIN_CLIENT_ID"),
     client_secret=os.getenv("LINKEDIN_CLIENT_SECRET"),
     scope=["openid", "profile", "email"],
+    redirect_url="/dashboard?social=true"
 )
 app.register_blueprint(linkedin_bp, url_prefix="/login")
+
+@oauth_authorized.connect_via(linkedin_bp)
+def linkedin_logged_in(blueprint, token):
+    if not token:
+        return False
+    try:
+        resp = blueprint.session.get("userinfo")
+        if resp.ok:
+            info = resp.json()
+            _save_social_user(info.get("email", ""), info.get("name", "LinkedIn User"), "linkedin")
+        else:
+            print(f"DEBUG: LinkedIn userinfo fetch failed: {resp.status_code}")
+    except Exception as exc:
+        print(f"DEBUG: LinkedIn signal error: {exc}")
+    return False
 
 # ================= DATABASE INIT =================
 def init_db():
@@ -89,14 +171,24 @@ init_db()
 # We avoid global variables for user-specific data to prevent privacy leaks.
 # Each user will have their own folder in 'uploads/'.
 
+@app.before_request
+def enforce_localhost():
+    """
+    Force all traffic to exactly 'localhost:5000' instead of '127.0.0.1:5000'.
+    Cookie domains are STRICT. If a user starts login on 127.0.0.1, the state cookie
+    is saved there. When Google redirects back to localhost:5000, the browser finds 
+    NO cookie, failing state validation and aborting the login silently.
+    """
+    if request.host.startswith("127.0.0.1"):
+        return redirect(request.url.replace("127.0.0.1", "localhost", 1))
+
 # ================= ROUTES =================
 @app.route("/")
 def index():
     user = session.get("user")
-    social_success = request.args.get("social_success")
-    print(f"DEBUG: Index access. Session user: {user}, Social Success: {social_success}")
+    print(f"DEBUG: Index access. Session user: {user}")
     
-    if user and not social_success:
+    if user:
         return redirect(url_for("dashboard"))
         
     return render_template("index.html")
@@ -137,10 +229,13 @@ def signin():
     conn = sqlite3.connect("users.db", timeout=10)
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT password FROM users WHERE email = ?", (email,))
+        cursor.execute("SELECT name, password FROM users WHERE email = ?", (email,))
         user = cursor.fetchone()
-        if user and bcrypt.checkpw(password.encode("utf-8"), user[0]):
+        if user and bcrypt.checkpw(password.encode("utf-8"), user[1]):
+            session["user_name"] = user[0]
             session["user"] = email
+            session.permanent = True
+            session.modified = True
             return jsonify({"message": "Login Successful"})
         else:
             return jsonify({"message": "Invalid Credentials"}), 400
@@ -206,157 +301,30 @@ def update_password():
     finally:
         conn.close()
 
-# ================= SOCIAL LOGIN ROUTES =================
-
-def handle_social_login(email, name, provider, mode="signin"):
-    if not email:
-        # Fallback if provider doesn't return email
-        email = f"{provider}_user_{name.replace(' ', '_').lower()}@example.com"
-        
-    conn = sqlite3.connect("users.db", timeout=10)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
-        user = cursor.fetchone()
-
-        if not user:
-            cursor.execute(
-                "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-                (name, email, f"{provider}_oauth".encode("utf-8"))
-            )
-            conn.commit()
-
-        session["user"] = email
-        session.permanent = True
-        session.modified = True
-        
-        # Explicitly save session before redirecting
-        print(f"DEBUG: Social Login Success for {email}. Session ID before redirect: {session.get('user')}")
-        return redirect(f"/?social_success=true&mode={mode}&provider={provider}")
-    finally:
-        conn.close()
+# ================= SOCIAL LOGIN TRIGGER ROUTES =================
+# These just kick off the OAuth flow. All user-saving logic is in the
+# oauth_authorized signals above.
 
 @app.route("/google_login")
 def google_login():
-    mode = request.args.get("mode", "signin")
-    print(f"DEBUG: Initializing Google Login. Mode: {mode}")
-    
-    # Force fresh login by clearing session tokens directly
-    session.pop('google_oauth_token', None)
-            
-    return redirect(url_for("google.login", next=url_for("google_login_callback", mode=mode), prompt="select_account"))
-
-@app.route("/google_login_callback")
-def google_login_callback():
-    mode = request.args.get("mode", "signin")
-    if not google.authorized:
-        return redirect(url_for("google.login", next=url_for("google_login_callback", mode=mode), prompt="select_account"))
-    
-    try:
-        print("DEBUG: Google Authorized. Fetching user info...")
-        resp = google.get("/oauth2/v2/userinfo")
-        
-        if not resp.ok:
-            print(f"DEBUG: Google fetch failed. Status: {resp.status_code}, Body: {resp.text}")
-            # If the token is invalid/expired, clear it and try again
-            if resp.status_code == 401:
-                del app.blueprints['google'].token
-                return redirect(url_for("google_login", mode=mode))
-            return f"Failed to fetch user info from Google: {resp.text}", 400
-            
-        user_info = resp.json()
-        print(f"DEBUG: Google Info Received: {user_info.get('email')}")
-        return handle_social_login(user_info["email"], user_info.get("name", "Google User"), "google", mode=mode)
-    except Exception as e:
-        print(f"DEBUG: Google Exception: {str(e)}")
-        # Clear token on any oauth error to force a fresh login next time
-        if "token_expired" in str(e).lower() or "expired" in str(e).lower():
-            del app.blueprints['google'].token
-            return redirect(url_for("google_login", mode=mode))
-        return f"Social Login Error: {str(e)}", 500
+    print(f"DEBUG: Starting Google Login")
+    try: del google_bp.token
+    except Exception: pass
+    return redirect(url_for("google.login"))
 
 @app.route("/facebook_login")
 def facebook_login():
-    mode = request.args.get("mode", "signin")
-    print(f"DEBUG: Starting Facebook Login. Mode: {mode}")
-    
-    if 'facebook' in app.blueprints:
-        try:
-            del app.blueprints['facebook'].token
-        except:
-            pass
-            
-    return redirect(url_for("facebook.login", next=url_for("facebook_login_callback", mode=mode), auth_type="reauthenticate"))
-
-@app.route("/facebook_login_callback")
-def facebook_login_callback():
-    mode = request.args.get("mode", "signin")
-    if not facebook.authorized:
-        return redirect(url_for("facebook.login", next=url_for("facebook_login_callback", mode=mode), auth_type="reauthenticate"))
-    
-    try:
-        print("DEBUG: Facebook Authorized. Fetching user info...")
-        resp = facebook.get("/me?fields=id,name,email")
-        
-        if not resp.ok:
-            print(f"DEBUG: Facebook fetch failed. Status: {resp.status_code}, Body: {resp.text}")
-            if resp.status_code == 401:
-                del app.blueprints['facebook'].token
-                return redirect(url_for("facebook_login", mode=mode))
-            return f"Failed to fetch user info from Facebook: {resp.text}", 400
-            
-        user_info = resp.json()
-        print(f"DEBUG: Facebook Info Received: {user_info.get('email')}")
-        return handle_social_login(user_info.get("email"), user_info.get("name", "Facebook User"), "facebook", mode=mode)
-    except Exception as e:
-        print(f"DEBUG: Facebook Exception: {str(e)}")
-        if "token_expired" in str(e).lower() or "expired" in str(e).lower():
-            del app.blueprints['facebook'].token
-            return redirect(url_for("facebook_login", mode=mode))
-        return f"Social Login Error: {str(e)}", 500
+    print(f"DEBUG: Starting Facebook Login")
+    try: del facebook_bp.token
+    except Exception: pass
+    return redirect(url_for("facebook.login"))
 
 @app.route("/linkedin_login")
 def linkedin_login():
-    mode = request.args.get("mode", "signin")
-    print(f"DEBUG: Starting LinkedIn Login. Mode: {mode}")
-    
-    if 'linkedin' in app.blueprints:
-        try:
-            del app.blueprints['linkedin'].token
-        except:
-            pass
-            
-    return redirect(url_for("linkedin.login", next=url_for("linkedin_login_callback", mode=mode), prompt="login"))
-
-@app.route("/linkedin_login_callback")
-def linkedin_login_callback():
-    mode = request.args.get("mode", "signin")
-    if not linkedin.authorized:
-        return redirect(url_for("linkedin.login", next=url_for("linkedin_login_callback", mode=mode), prompt="login"))
-    
-    try:
-        print("DEBUG: LinkedIn Authorized. Fetching user info...")
-        resp = linkedin.get("userinfo")
-        
-        if not resp.ok:
-            print(f"DEBUG: LinkedIn fetch failed. Status: {resp.status_code}, Body: {resp.text}")
-            if resp.status_code == 401:
-                del app.blueprints['linkedin'].token
-                return redirect(url_for("linkedin_login", mode=mode))
-            return f"Failed to fetch user info from LinkedIn: {resp.text}", 400
-            
-        user_info = resp.json()
-        email = user_info.get("email")
-        name = user_info.get("name", "LinkedIn User")
-        print(f"DEBUG: LinkedIn Info Received: {email}")
-        
-        return handle_social_login(email, name, "linkedin", mode=mode)
-    except Exception as e:
-        print(f"DEBUG: LinkedIn Exception: {str(e)}")
-        if "token_expired" in str(e).lower() or "expired" in str(e).lower():
-            del app.blueprints['linkedin'].token
-            return redirect(url_for("linkedin_login", mode=mode))
-        return f"Social Login Error: {str(e)}", 500
+    print(f"DEBUG: Starting LinkedIn Login")
+    try: del linkedin_bp.token
+    except Exception: pass
+    return redirect(url_for("linkedin.login"))
 
 # ================= DASHBOARD =================
 @app.route("/dashboard")
