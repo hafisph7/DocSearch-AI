@@ -79,7 +79,7 @@ google_bp = make_google_blueprint(
     client_id=os.getenv("GOOGLE_CLIENT_ID"),
     client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
     scope=["openid", "email", "profile"],
-    redirect_url="/dashboard?social=true"
+    redirect_url="/dashboard?social=google"
 )
 app.register_blueprint(google_bp, url_prefix="/login")
 
@@ -107,7 +107,7 @@ facebook_bp = make_facebook_blueprint(
     client_id=os.getenv("FACEBOOK_CLIENT_ID"),
     client_secret=os.getenv("FACEBOOK_CLIENT_SECRET"),
     scope=["email"],
-    redirect_url="/dashboard?social=true"
+    redirect_url="/dashboard?social=facebook"
 )
 app.register_blueprint(facebook_bp, url_prefix="/login")
 
@@ -131,7 +131,7 @@ linkedin_bp = make_linkedin_blueprint(
     client_id=os.getenv("LINKEDIN_CLIENT_ID"),
     client_secret=os.getenv("LINKEDIN_CLIENT_SECRET"),
     scope=["openid", "profile", "email"],
-    redirect_url="/dashboard?social=true"
+    redirect_url="/dashboard?social=linkedin"
 )
 app.register_blueprint(linkedin_bp, url_prefix="/login")
 

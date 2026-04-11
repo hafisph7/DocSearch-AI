@@ -813,12 +813,18 @@
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('login_success') === 'true') {
                 const name = document.querySelector('.user-email')?.textContent || 'there';
-                showToast(`Welcome back, ${name}! Login successful. 🎉`, "success");
+                showToast(`Welcome back, ${name}! Login successful.`, "success");
                 const newUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
-            } else if (urlParams.get('social') === 'true') {
+            } else if (urlParams.get('social')) {
+                const socialVal = urlParams.get('social');
                 const name = document.querySelector('.user-email')?.textContent || 'there';
-                showToast(`Welcome, ${name}! Social login successful. 🎉`, "success");
+                let providerStr = "Login";
+                if (socialVal === 'google') providerStr = "Google login";
+                if (socialVal === 'facebook') providerStr = "Facebook login";
+                if (socialVal === 'linkedin') providerStr = "LinkedIn login";
+                
+                showToast(`Welcome, ${name}! ${providerStr} successful.`, "success");
                 const newUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
             }
