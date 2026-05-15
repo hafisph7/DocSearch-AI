@@ -26,6 +26,11 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "https://ckcrqhunkdeuotcjhiqn.supabase.
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrY3JxaHVua2RldW90Y2poaXFuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODgyNTgzMSwiZXhwIjoyMDk0NDAxODMxfQ.mXVlhTWlF9wij5dQkARv53_MSHOmV01MHsac5LmbaIg")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Use /tmp for uploads on Vercel as the normal filesystem is read-only
+UPLOAD_FOLDER = '/tmp' if os.getenv("DATABASE_URL") else 'uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
 # ================= FLASK APP =================
 app = Flask(__name__)
 app.secret_key = "super_secret_key_hafis"
