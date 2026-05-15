@@ -268,6 +268,7 @@ def signup():
     except (sqlite3.IntegrityError, psycopg2.errors.UniqueViolation):
         return jsonify({"message": "Email already exists"}), 400
     except Exception as e:
+        print(f"ERROR DETECTED in /signup: {str(e)}")
         return jsonify({"message": f"Database error: {str(e)}"}), 500
     finally:
         conn.close()
@@ -289,17 +290,19 @@ def signin():
         
         user = cursor.fetchone()
         
-        # user[1] is the password blob
-        db_password = bytes(user[1]) if user else None
+        if user:
+            db_password = bytes(user[1])
+            if bcrypt.checkpw(password.encode("utf-8"), db_password):
+                session["user_name"] = user[0]
+                session["user"] = email
+                session.permanent = True
+                session.modified = True
+                return jsonify({"message": "Login Successful"})
         
-        if user and bcrypt.checkpw(password.encode("utf-8"), db_password):
-            session["user_name"] = user[0]
-            session["user"] = email
-            session.permanent = True
-            session.modified = True
-            return jsonify({"message": "Login Successful"})
-        else:
-            return jsonify({"message": "Invalid Credentials"}), 400
+        return jsonify({"message": "Invalid Credentials"}), 400
+    except Exception as e:
+        print(f"ERROR DETECTED in /signin: {str(e)}")
+        return jsonify({"message": "Login Error"}), 500
     finally:
         conn.close()
 
