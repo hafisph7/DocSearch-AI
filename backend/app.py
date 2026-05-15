@@ -4,6 +4,7 @@ os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
 from flask import Flask, request, jsonify, render_template, redirect, session, url_for
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_dance.contrib.google import make_google_blueprint, google
 from flask_dance.contrib.facebook import make_facebook_blueprint, facebook
 from flask_dance.contrib.linkedin import make_linkedin_blueprint, linkedin
@@ -28,6 +29,7 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=2592000  # 30 days to "remember me"
 )
 CORS(app, supports_credentials=True)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 # ================= MAIL SETUP =================
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -266,7 +268,7 @@ def forgot_password():
 You requested a password reset for your DocSearch AI account.
 To reset your password, please click the link below:
 
-http://localhost:5000/?mode=reset&email={email}
+{request.host_url}?mode=reset&email={email}
 
 If you did not request this, please ignore this email.
 """

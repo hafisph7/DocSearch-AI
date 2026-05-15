@@ -1,0 +1,11 @@
+flask
+flask-cors
+flask-dance
+flask-mail
+bcrypt
+pdfplumber
+google-generativeai
+python-dotenv
+gunicorn
+blinker
+psycopg2-binary
