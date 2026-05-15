@@ -15,10 +15,16 @@ import psycopg2.extras
 import bcrypt
 import pdfplumber
 import google.generativeai as genai
+from supabase import create_client, Client
 from dotenv import load_dotenv
 
 # ================= LOAD ENV =================
 load_dotenv()
+
+# ================= SUPABASE SETUP =================
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://ckcrqhunkdeuotcjhiqn.supabase.co")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrY3JxaHVua2RldW90Y2poaXFuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODgyNTgzMSwiZXhwIjoyMDk0NDAxODMxfQ.mXVlhTWlF9wij5dQkARv53_MSHOmV01MHsac5LmbaIg")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ================= FLASK APP =================
 app = Flask(__name__)
@@ -415,7 +421,6 @@ def upload_file():
         return jsonify({"message": "Unauthorized"}), 403
 
     user_email = session["user"]
-    user_folder = os.path.join("uploads", user_email)
 
     if "file" not in request.files:
         return jsonify({"message": "No file uploaded"}), 400
@@ -424,27 +429,50 @@ def upload_file():
     if file.filename == "":
         return jsonify({"message": "No file selected"}), 400
 
-    if not os.path.exists(user_folder):
-        os.makedirs(user_folder)
-
-    filepath = os.path.join(user_folder, file.filename)
-    file.save(filepath)
-
-    # Extract text and save it to a companion file for privacy and performance
-    extracted_text = ""
     try:
-        if file.filename.lower().endswith(".pdf"):
+        filename = file.filename
+        # Save to /tmp for processing
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(filepath)
+
+        # Upload to Supabase Storage (Private folder per user)
+        supabase_path = f"{user_email}/{filename}"
+        with open(filepath, "rb") as f:
+            supabase.storage.from_("pdfs").upload(supabase_path, f, {"upsert": "true"})
+
+        # Extract text for AI
+        extracted_text = ""
+        if filename.lower().endswith(".pdf"):
             with pdfplumber.open(filepath) as pdf:
                 for page in pdf.pages:
                     extracted_text += page.extract_text() or ""
         
-        # Save extracted text to a hidden file for this user
-        text_filepath = filepath + ".txt"
-        with open(text_filepath, "w", encoding="utf-8") as f:
-            f.write(extracted_text)
+        # Save metadata to DB
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            if os.getenv("DATABASE_URL"):
+                cursor.execute(
+                    "INSERT INTO documents (user_email, filename, text) VALUES (%s, %s, %s)",
+                    (user_email, filename, extracted_text)
+                )
+            else:
+                cursor.execute(
+                    "INSERT INTO documents (user_email, filename, text) VALUES (?, ?, ?)",
+                    (user_email, filename, extracted_text)
+                )
+            if not os.getenv("DATABASE_URL"):
+                conn.commit()
             
-        return jsonify({"message": "File uploaded successfully"})
+            # Clean up /tmp
+            if os.path.exists(filepath):
+                os.remove(filepath)
+
+            return jsonify({"message": "File uploaded successfully"})
+        finally:
+            conn.close()
     except Exception as e:
+        print(f"UPLOAD ERROR: {str(e)}")
         return jsonify({"message": f"Error processing file: {str(e)}"}), 500
 
 # ================= LIST FILES =================
@@ -454,23 +482,21 @@ def list_files():
         return jsonify({"message": "Unauthorized"}), 403
     
     user_email = session["user"]
-    user_folder = os.path.join("uploads", user_email)
-
-    if not os.path.exists(user_folder):
-        return jsonify([])
+    try:
+        # List files from Supabase Storage
+        res = supabase.storage.from_("pdfs").list(user_email)
         
-    files = []
-    for filename in os.listdir(user_folder):
-        filepath = os.path.join(user_folder, filename)
-        # Only show the original files, not the extracted text files
-        if os.path.isfile(filepath) and not filename.endswith(".txt"):
-            stats = os.stat(filepath)
+        files = []
+        for item in res:
             files.append({
-                "name": filename,
-                "size": f"{stats.st_size / (1024 * 1024):.2f} MB",
-                "date": os.path.getmtime(filepath)
+                "name": item["name"],
+                "size": f"{item['metadata']['size'] / (1024 * 1024):.2f} MB",
+                "date": item["created_at"]
             })
-    return jsonify(files)
+        return jsonify(files)
+    except Exception as e:
+        print(f"LIST ERROR: {str(e)}")
+        return jsonify([])
 
 # ================= DELETE FILE =================
 @app.route("/delete/<filename>", methods=["DELETE"])
@@ -479,16 +505,26 @@ def delete_file(filename):
         return jsonify({"message": "Unauthorized"}), 403
     
     user_email = session["user"]
-    filepath = os.path.join("uploads", user_email, filename)
-    text_filepath = filepath + ".txt"
-
-    if os.path.exists(filepath):
-        os.remove(filepath)
-        if os.path.exists(text_filepath):
-            os.remove(text_filepath)
-        return jsonify({"message": "File deleted successfully"})
-    else:
-        return jsonify({"message": "File not found"}), 404
+    try:
+        # Delete from Supabase Storage
+        supabase.storage.from_("pdfs").remove([f"{user_email}/{filename}"])
+        
+        # Delete from Database
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            if os.getenv("DATABASE_URL"):
+                cursor.execute("DELETE FROM documents WHERE user_email = %s AND filename = %s", (user_email, filename))
+            else:
+                cursor.execute("DELETE FROM documents WHERE user_email = ? AND filename = ?", (user_email, filename))
+            if not os.getenv("DATABASE_URL"):
+                conn.commit()
+            return jsonify({"message": "File deleted successfully"})
+        finally:
+            conn.close()
+    except Exception as e:
+        print(f"DELETE ERROR: {str(e)}")
+        return jsonify({"message": f"Delete failed: {str(e)}"}), 500
 
 # ================= ASK QUESTION =================
 @app.route("/ask", methods=["POST"])
@@ -497,23 +533,24 @@ def ask_question():
         return jsonify({"answer": "Unauthorized"}), 403
 
     user_email = session["user"]
-    user_folder = os.path.join("uploads", user_email)
-
-    if not os.path.exists(user_folder):
-        return jsonify({"answer": "Please upload a document first."})
-
-    # Find all extracted text files for this user
-    text_files = [f for f in os.listdir(user_folder) if f.endswith(".txt")]
-    if not text_files:
-        return jsonify({"answer": "No extracted text found. Please upload your documents again."})
     
-    # Combine text from all documents (with a limit to prevent prompt overflow)
-    all_text = []
-    for f in text_files:
-        with open(os.path.join(user_folder, f), "r", encoding="utf-8") as file:
-            all_text.append(file.read())
-    
-    document_text = "\n\n".join(all_text)
+    # Get combined text from ALL documents for this user from the Database
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        if os.getenv("DATABASE_URL"):
+            cursor.execute("SELECT text FROM documents WHERE user_email = %s", (user_email,))
+        else:
+            cursor.execute("SELECT text FROM documents WHERE user_email = ?", (user_email,))
+        
+        rows = cursor.fetchall()
+        if not rows:
+            return jsonify({"answer": "Please upload a document first."})
+        
+        all_text = [row[0] for row in rows]
+        document_text = "\n\n".join(all_text)
+    finally:
+        conn.close()
 
     data = request.json
     question = data.get("question")
