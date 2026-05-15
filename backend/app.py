@@ -207,7 +207,10 @@ def init_db():
         conn.commit()
     conn.close()
 
-init_db()
+try:
+    init_db()
+except Exception as e:
+    print(f"CRITICAL: Database initialization failed: {str(e)}")
 
 # ================= GLOBAL STORAGE =================
 # We avoid global variables for user-specific data to prevent privacy leaks.
