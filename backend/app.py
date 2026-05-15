@@ -10,6 +10,8 @@ from flask_dance.contrib.facebook import make_facebook_blueprint, facebook
 from flask_dance.contrib.linkedin import make_linkedin_blueprint, linkedin
 from flask_mail import Mail, Message
 import sqlite3
+import psycopg2
+import psycopg2.extras
 import bcrypt
 import pdfplumber
 import google.generativeai as genai
@@ -48,26 +50,49 @@ model = genai.GenerativeModel("models/gemini-flash-latest")
 # ================= OAUTH BLUEPRINTS =================
 from flask_dance.consumer import oauth_authorized
 
-# ---------- helper: save social user to DB & session ----------
+# ---------- helper: DB connection ----------
+def get_db_connection():
+    """Returns a connection to either PostgreSQL (prod) or SQLite (local)."""
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        # Connect to PostgreSQL (Supabase/Render)
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        return conn
+    else:
+        # Fallback to local SQLite
+        conn = sqlite3.connect("users.db", timeout=10)
+        conn.row_factory = sqlite3.Row
+        return conn
+
 def _save_social_user(email, name, provider):
     """Upsert the social user into the DB and populate the Flask session."""
     if not email:
         email = f"{provider}_{name.replace(' ','_').lower()}@oauth.local"
 
-    conn = sqlite3.connect("users.db", timeout=10)
+    conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+        if os.getenv("DATABASE_URL"):
+            cursor.execute("SELECT name FROM users WHERE email = %s", (email,))
+        else:
+            cursor.execute("SELECT name FROM users WHERE email = ?", (email,))
+        
         user = cursor.fetchone()
         if not user:
-            cursor.execute(
-                "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-                (name, email, f"{provider}_oauth".encode("utf-8"))
-            )
-            conn.commit()
+            if os.getenv("DATABASE_URL"):
+                cursor.execute(
+                    "INSERT INTO users (name, email, password) VALUES (%s, %s, %s)",
+                    (name, email, psycopg2.Binary(f"{provider}_oauth".encode("utf-8")))
+                )
+            else:
+                cursor.execute(
+                    "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+                    (name, email, f"{provider}_oauth".encode("utf-8"))
+                )
             session["user_name"] = name
         else:
-            session["user_name"] = user[1]
+            session["user_name"] = user[0]
 
         session["user"] = email
         session.permanent = True
@@ -154,17 +179,32 @@ def linkedin_logged_in(blueprint, token):
 
 # ================= DATABASE INIT =================
 def init_db():
-    conn = sqlite3.connect("users.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            email TEXT UNIQUE,
-            password BLOB
-        )
-    """)
-    conn.commit()
+    
+    if os.getenv("DATABASE_URL"):
+        # PostgreSQL schema
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name TEXT,
+                email TEXT UNIQUE,
+                password BYTEA
+            )
+        """)
+    else:
+        # SQLite schema
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                email TEXT UNIQUE,
+                password BLOB
+            )
+        """)
+    
+    if not os.getenv("DATABASE_URL"):
+        conn.commit()
     conn.close()
 
 init_db()
@@ -205,16 +245,24 @@ def signup():
 
     hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
 
-    conn = sqlite3.connect("users.db", timeout=10)
+    conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-            (name, email, hashed_password)
-        )
-        conn.commit()
+        if os.getenv("DATABASE_URL"):
+            cursor.execute(
+                "INSERT INTO users (name, email, password) VALUES (%s, %s, %s)",
+                (name, email, psycopg2.Binary(hashed_password))
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+                (name, email, hashed_password)
+            )
+        
+        if not os.getenv("DATABASE_URL"):
+            conn.commit()
         return jsonify({"message": "User Registered Successfully"})
-    except sqlite3.IntegrityError:
+    except (sqlite3.IntegrityError, psycopg2.errors.UniqueViolation):
         return jsonify({"message": "Email already exists"}), 400
     except Exception as e:
         return jsonify({"message": f"Database error: {str(e)}"}), 500
@@ -228,12 +276,20 @@ def signin():
     email = data.get("email")
     password = data.get("password")
 
-    conn = sqlite3.connect("users.db", timeout=10)
+    conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT name, password FROM users WHERE email = ?", (email,))
+        if os.getenv("DATABASE_URL"):
+            cursor.execute("SELECT name, password FROM users WHERE email = %s", (email,))
+        else:
+            cursor.execute("SELECT name, password FROM users WHERE email = ?", (email,))
+        
         user = cursor.fetchone()
-        if user and bcrypt.checkpw(password.encode("utf-8"), user[1]):
+        
+        # user[1] is the password blob
+        db_password = bytes(user[1]) if user else None
+        
+        if user and bcrypt.checkpw(password.encode("utf-8"), db_password):
             session["user_name"] = user[0]
             session["user"] = email
             session.permanent = True
@@ -250,10 +306,14 @@ def forgot_password():
     data = request.json
     email = data.get("email")
 
-    conn = sqlite3.connect("users.db", timeout=10)
+    conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+        if os.getenv("DATABASE_URL"):
+            cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+        else:
+            cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+        
         user = cursor.fetchone()
 
         if user:
@@ -292,11 +352,16 @@ def update_password():
 
     hashed_password = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt())
 
-    conn = sqlite3.connect("users.db", timeout=10)
+    conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_password, email))
-        conn.commit()
+        if os.getenv("DATABASE_URL"):
+            cursor.execute("UPDATE users SET password = %s WHERE email = %s", (psycopg2.Binary(hashed_password), email))
+        else:
+            cursor.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_password, email))
+        
+        if not os.getenv("DATABASE_URL"):
+            conn.commit()
         return jsonify({"message": "Password updated successfully"})
     except Exception as e:
         return jsonify({"message": f"Database error: {str(e)}"}), 500
