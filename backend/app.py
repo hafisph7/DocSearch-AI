@@ -214,6 +214,28 @@ def init_db():
             )
         """)
     
+    # Create documents table
+    if os.getenv("DATABASE_URL"):
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS documents (
+                id SERIAL PRIMARY KEY,
+                user_email TEXT NOT NULL,
+                filename TEXT NOT NULL,
+                text TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+    else:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS documents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT NOT NULL,
+                filename TEXT NOT NULL,
+                text TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+    
     if not os.getenv("DATABASE_URL"):
         conn.commit()
     conn.close()
