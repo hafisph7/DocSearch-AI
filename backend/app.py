@@ -1,5 +1,4 @@
 import os
-from urllib.parse import unquote
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
@@ -23,10 +22,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ================= SUPABASE SETUP =================
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in environment variables.")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://ckcrqhunkdeuotcjhiqn.supabase.co")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrY3JxaHVua2RldW90Y2poaXFuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODgyNTgzMSwiZXhwIjoyMDk0NDAxODMxfQ.mXVlhTWlF9wij5dQkARv53_MSHOmV01MHsac5LmbaIg")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Use /tmp for uploads on Vercel as the normal filesystem is read-only
@@ -36,7 +33,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 # ================= FLASK APP =================
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(32))
+app.secret_key = "super_secret_key_hafis"
 app.config.update(
     SESSION_COOKIE_NAME="docsearch_session",
     SESSION_COOKIE_PATH="/",
@@ -574,7 +571,6 @@ def delete_file(filename):
         return jsonify({"message": "Unauthorized"}), 403
     
     user_email = session["user"]
-    filename = unquote(filename)  # Decode URL-encoded filename (e.g. spaces, parentheses)
     try:
         # Delete from Supabase Storage
         supabase.storage.from_("pdfs").remove([f"{user_email}/{filename}"])

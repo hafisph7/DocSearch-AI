@@ -1150,29 +1150,22 @@
 
         async function deleteDoc(filename) {
             try {
-                const encodedName = encodeURIComponent(filename);
-                const response = await fetch(`/delete/${encodedName}`, {
-                    method: "DELETE",
-                    credentials: "include"
+                const response = await fetch(`/delete/${filename}`, {
+                    method: "DELETE"
                 });
 
-                const result = await response.json().catch(() => ({}));
-
                 if (response.ok) {
-                    documents = documents.filter(d => d.name !== filename);
-                    renderDocuments();
+                    await loadFiles();
                     showToast("File deleted successfully", "success");
                     closeModal();
                     selectedFiles.delete(filename);
                     updateSelectionUI();
                 } else {
-                    showToast(result.message || "Failed to delete file.", "error");
-                    closeModal();
+                    showToast("Failed to delete file.", "error");
                 }
             } catch (error) {
                 console.error("Delete failed:", error);
                 showToast("Server error occurred.", "error");
-                closeModal();
             }
         }
 
@@ -1253,23 +1246,18 @@
 
             for (const filename of filesToDelete) {
                 try {
-                    const encodedName = encodeURIComponent(filename);
-                    const response = await fetch(`/delete/${encodedName}`, {
-                        method: "DELETE",
-                        credentials: "include"
+                    const response = await fetch(`/delete/${filename}`, {
+                        method: "DELETE"
                     });
-                    if (response.ok) {
-                        successCount++;
-                        documents = documents.filter(d => d.name !== filename);
-                    }
+                    if (response.ok) successCount++;
                 } catch (error) {
                     console.error(`Failed to delete ${filename}`, error);
                 }
             }
 
             selectedFiles.clear();
-            renderDocuments();
-            showToast(`Successfully deleted ${successCount} file${successCount !== 1 ? 's' : ''}`, successCount > 0 ? "success" : "error");
+            await loadFiles();
+            showToast(`Successfully deleted ${successCount} files`, successCount > 0 ? "success" : "error");
             closeModal();
             updateSelectionUI();
         }
