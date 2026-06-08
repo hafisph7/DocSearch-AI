@@ -235,6 +235,45 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+    # Create query_history table
+    if os.getenv("DATABASE_URL"):
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS query_history (
+                id SERIAL PRIMARY KEY,
+                user_email TEXT NOT NULL,
+                question TEXT NOT NULL,
+                answer TEXT NOT NULL,
+                resources TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+    else:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS query_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT NOT NULL,
+                filename_context TEXT,
+                question TEXT NOT NULL,
+                answer TEXT NOT NULL,
+                resources TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # Wait, filename_context is not strictly needed, but let's keep it simple and consistent:
+        # We will use the same schema for SQLite:
+        # id INTEGER PRIMARY KEY AUTOINCREMENT, user_email TEXT NOT NULL, question TEXT NOT NULL, answer TEXT NOT NULL, resources TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        # Let's adjust SQLite schema to match PostgreSQL:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS query_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT NOT NULL,
+                question TEXT NOT NULL,
+                answer TEXT NOT NULL,
+                resources TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
     
     if not os.getenv("DATABASE_URL"):
         conn.commit()
@@ -554,6 +593,31 @@ def delete_file(filename):
         return jsonify({"message": f"Delete failed: {str(e)}"}), 500
 
 # ================= ASK QUESTION =================
+# ================= SAVE QUERY HISTORY =================
+def save_query_history(user_email, question, answer, resources_dict):
+    import json
+    resources_json = json.dumps(resources_dict)
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        if os.getenv("DATABASE_URL"):
+            cursor.execute(
+                "INSERT INTO query_history (user_email, question, answer, resources) VALUES (%s, %s, %s, %s)",
+                (user_email, question, answer, resources_json)
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO query_history (user_email, question, answer, resources) VALUES (?, ?, ?, ?)",
+                (user_email, question, answer, resources_json)
+            )
+        if not os.getenv("DATABASE_URL"):
+            conn.commit()
+    except Exception as e:
+        print(f"DEBUG: Error saving query history: {e}")
+    finally:
+        conn.close()
+
+# ================= ASK QUESTION =================
 @app.route("/ask", methods=["POST"])
 def ask_question():
     if "user" not in session:
@@ -626,14 +690,108 @@ def ask_question():
             # Ensure the structure matches what the frontend expects
             if "answer" not in data:
                 data = {"answer": text, "resources": {"practice": [], "videos": []}}
+            
+            save_query_history(user_email, question, data["answer"], data.get("resources", {"practice": [], "videos": []}))
             return jsonify(data)
         except Exception:
             # Fallback if AI didn't return valid JSON
-            return jsonify({"answer": ai_text, "resources": {"practice": [], "videos": []}})
+            fallback_data = {"answer": ai_text, "resources": {"practice": [], "videos": []}}
+            save_query_history(user_email, question, fallback_data["answer"], fallback_data["resources"])
+            return jsonify(fallback_data)
 
     except Exception as e:
         print(f"DEBUG: AI Error: {str(e)}")
         return jsonify({"answer": f"AI Error occurred: {str(e)}", "resources": {"practice": [], "videos": []}})
+
+# ================= QUERY HISTORY API =================
+@app.route("/history", methods=["GET"])
+def get_history():
+    if "user" not in session:
+        return jsonify([]), 403
+    
+    user_email = session["user"]
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        if os.getenv("DATABASE_URL"):
+            cursor.execute(
+                "SELECT id, question, answer, resources, created_at FROM query_history WHERE user_email = %s ORDER BY created_at DESC",
+                (user_email,)
+            )
+        else:
+            cursor.execute(
+                "SELECT id, question, answer, resources, created_at FROM query_history WHERE user_email = ? ORDER BY created_at DESC",
+                (user_email,)
+            )
+        
+        rows = cursor.fetchall()
+        history = []
+        import json
+        for row in rows:
+            try:
+                res_dict = json.loads(row[3])
+            except Exception:
+                res_dict = {"practice": [], "videos": []}
+                
+            history.append({
+                "id": row[0],
+                "question": row[1],
+                "answer": row[2],
+                "resources": res_dict,
+                "created_at": str(row[4])
+            })
+        return jsonify(history)
+    except Exception as e:
+        print(f"DEBUG: Error retrieving history: {e}")
+        return jsonify([])
+    finally:
+        conn.close()
+
+@app.route("/history/<int:history_id>", methods=["DELETE"])
+def delete_history_item(history_id):
+    if "user" not in session:
+        return jsonify({"message": "Unauthorized"}), 403
+    
+    user_email = session["user"]
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        if os.getenv("DATABASE_URL"):
+            cursor.execute("DELETE FROM query_history WHERE id = %s AND user_email = %s", (history_id, user_email))
+        else:
+            cursor.execute("DELETE FROM query_history WHERE id = ? AND user_email = ?", (history_id, user_email))
+        
+        if not os.getenv("DATABASE_URL"):
+            conn.commit()
+        return jsonify({"message": "History item deleted successfully"})
+    except Exception as e:
+        print(f"DEBUG: Error deleting history item: {e}")
+        return jsonify({"message": "Failed to delete history item"}), 500
+    finally:
+        conn.close()
+
+@app.route("/history/clear", methods=["DELETE"])
+def clear_history():
+    if "user" not in session:
+        return jsonify({"message": "Unauthorized"}), 403
+    
+    user_email = session["user"]
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        if os.getenv("DATABASE_URL"):
+            cursor.execute("DELETE FROM query_history WHERE user_email = %s", (user_email,))
+        else:
+            cursor.execute("DELETE FROM query_history WHERE user_email = ?", (user_email,))
+        
+        if not os.getenv("DATABASE_URL"):
+            conn.commit()
+        return jsonify({"message": "History cleared successfully"})
+    except Exception as e:
+        print(f"DEBUG: Error clearing history: {e}")
+        return jsonify({"message": "Failed to clear history"}), 500
+    finally:
+        conn.close()
 
 # ================= LOGOUT =================
 @app.route("/logout")
@@ -657,8 +815,8 @@ if __name__ == "__main__":
     print("Facebook: http://localhost:5000/login/facebook/authorized")
     print("LinkedIn: http://localhost:5000/login/linkedin/authorized")
     print("****************************************************************")
-    print("🌍 PLEASE OPEN THIS LINK IN YOUR BROWSER:")
-    print("👉 http://localhost:5000")
+    print("PLEASE OPEN THIS LINK IN YOUR BROWSER:")
+    print("http://localhost:5000")
     print("****************************************************************\n")
     
     # Use localhost specifically to match OAuth Redirect URIs

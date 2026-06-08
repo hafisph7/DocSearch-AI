@@ -669,10 +669,196 @@
         .toast.error .toast-icon {
             color: #e74c3c;
         }
+
+        /* ================= HISTORY SIDEBAR ================= */
+        .history-sidebar {
+            position: fixed;
+            top: 0;
+            left: -350px;
+            width: 350px;
+            height: 100vh;
+            background: var(--white);
+            box-shadow: 5px 0 30px rgba(0, 0, 0, 0.1);
+            z-index: 2500;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-sidebar.active {
+            left: 0;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 2400;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-header h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-header h3 i {
+            color: var(--primary-color);
+        }
+
+        .btn-clear-history {
+            background: transparent;
+            border: 1px solid #ddd;
+            color: #666;
+            padding: 5px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-clear-history:hover {
+            background: #ff4d4d;
+            color: white;
+            border-color: #ff4d4d;
+        }
+
+        .close-sidebar {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #888;
+            transition: color 0.2s;
+        }
+
+        .close-sidebar:hover {
+            color: var(--text-color);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .history-item {
+            background: #f8f9fa;
+            border: 1px solid #eee;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 75, 43, 0.03);
+            border-color: rgba(255, 75, 43, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
+        }
+
+        .history-item-content {
+            margin-right: 25px;
+        }
+
+        .history-question {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.4;
+        }
+
+        .history-date {
+            font-size: 11px;
+            color: #999;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .history-delete-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: #ccc;
+            cursor: pointer;
+            transition: color 0.2s;
+            font-size: 14px;
+        }
+
+        .history-delete-btn:hover {
+            color: #ff4d4d;
+        }
+
+        .empty-history {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .empty-history i {
+            font-size: 40px;
+            margin-bottom: 15px;
+            display: block;
+            color: #ddd;
+        }
     </style>
 </head>
 
 <body>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- History Sidebar -->
+    <div id="historySidebar" class="history-sidebar">
+        <div class="sidebar-header">
+            <h3><i class="fas fa-history"></i> Query History</h3>
+            <button class="btn-clear-history" onclick="confirmClearHistory()" title="Clear all history">
+                <i class="fas fa-trash-alt"></i> Clear All
+            </button>
+            <button class="close-sidebar" onclick="toggleSidebar()">&times;</button>
+        </div>
+        <div class="sidebar-content" id="historyList">
+            <!-- History items will be injected here -->
+        </div>
+    </div>
 
     <nav>
         <div class="nav-left">
@@ -681,6 +867,7 @@
             </div>
             <div class="nav-links">
                 <a href="/dashboard"><i class="fas fa-home"></i> Home</a>
+                <a href="javascript:void(0)" onclick="toggleSidebar()"><i class="fas fa-history"></i> History</a>
             </div>
         </div>
         <div class="nav-right">
@@ -804,10 +991,12 @@
 
     <script>
         let documents = [];
+        let historyData = [];
 
-        // Load files when page loads
+        // Load files and query history when page loads
         document.addEventListener("DOMContentLoaded", () => {
             loadFiles();
+            loadHistory();
             
             // Check for login success
             const urlParams = new URLSearchParams(window.location.search);
@@ -1174,9 +1363,187 @@
                     `).join("");
                 }
 
+                // Refresh history list
+                await loadHistory();
+
             } catch (error) {
                 loader.style.display = "none";
                 showToast("AI request failed.", "error");
+            }
+        }
+
+        /* ================= HISTORY FUNCTIONS ================= */
+        async function loadHistory() {
+            try {
+                const response = await fetch("/history");
+                const data = await response.json();
+                historyData = data;
+                renderHistory();
+            } catch (error) {
+                console.error("Failed to load query history:", error);
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById("historySidebar");
+            const overlay = document.getElementById("sidebarOverlay");
+            sidebar.classList.toggle("active");
+            overlay.classList.toggle("active");
+            
+            // Reload history when opening
+            if (sidebar.classList.contains("active")) {
+                loadHistory();
+            }
+        }
+
+        function renderHistory() {
+            const historyList = document.getElementById("historyList");
+            if (historyData.length === 0) {
+                historyList.innerHTML = `
+                    <div class="empty-history">
+                        <i class="fas fa-history"></i>
+                        <p>No queries asked yet.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            historyList.innerHTML = historyData.map((item) => {
+                const queryDate = new Date(item.created_at).toLocaleString();
+                return `
+                    <div class="history-item" onclick="selectHistoryItem(${item.id})">
+                        <i class="fas fa-trash-alt history-delete-btn" onclick="confirmDeleteHistoryItem(${item.id}, event)" title="Delete from history"></i>
+                        <div class="history-item-content">
+                            <div class="history-question" title="${escapeHtml(item.question)}">${escapeHtml(item.question)}</div>
+                            <div class="history-date">
+                                <i class="far fa-clock"></i> ${queryDate}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function selectHistoryItem(id) {
+            const item = historyData.find(h => h.id === id);
+            if (!item) return;
+
+            // Close sidebar
+            toggleSidebar();
+
+            // Populate input
+            document.getElementById("questionInput").value = item.question;
+
+            // Display active AI Response
+            const answerBox = document.getElementById("answerBox");
+            const aiResponse = document.getElementById("aiResponse");
+            const resourcesGrid = document.getElementById("resourcesGrid");
+            const practiceList = document.getElementById("practiceList");
+            const videoList = document.getElementById("videoList");
+
+            aiResponse.style.display = "block";
+            answerBox.innerText = item.answer;
+
+            // Render Resources if they exist
+            if (item.resources && (item.resources.practice.length > 0 || item.resources.videos.length > 0)) {
+                resourcesGrid.style.display = "grid";
+
+                practiceList.innerHTML = item.resources.practice.map(res => `
+                    <a href="${res.link}" target="_blank" class="resource-card">
+                        <div class="res-icon"><i class="fas fa-external-link-alt"></i></div>
+                        <div class="res-content">
+                            <h4>${escapeHtml(res.title)}</h4>
+                            <p>${escapeHtml(res.desc)}</p>
+                        </div>
+                    </a>
+                `).join("");
+
+                videoList.innerHTML = item.resources.videos.map(res => `
+                    <a href="${res.link}" target="_blank" class="resource-card">
+                        <div class="res-icon"><i class="fas fa-play"></i></div>
+                        <div class="res-content">
+                            <h4>${escapeHtml(res.title)}</h4>
+                            <p>${escapeHtml(res.desc)}</p>
+                        </div>
+                    </a>
+                `).join("");
+            } else {
+                resourcesGrid.style.display = "none";
+            }
+
+            // Scroll to the response
+            aiResponse.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function confirmDeleteHistoryItem(id, event) {
+            event.stopPropagation(); // Prevent triggering click on the list item
+            const item = historyData.find(h => h.id === id);
+            if (!item) return;
+
+            showModal(
+                "Delete History Entry",
+                `Are you sure you want to delete this query from your history?<br><b>"${escapeHtml(item.question)}"</b>`,
+                async () => {
+                    await deleteHistoryItem(id);
+                }
+            );
+        }
+
+        async function deleteHistoryItem(id) {
+            try {
+                const response = await fetch(`/history/${id}`, {
+                    method: "DELETE"
+                });
+
+                if (response.ok) {
+                    showToast("History entry deleted", "success");
+                    closeModal();
+                    await loadHistory();
+                } else {
+                    showToast("Failed to delete history entry", "error");
+                }
+            } catch (error) {
+                console.error("Failed to delete history item:", error);
+                showToast("Server error occurred.", "error");
+            }
+        }
+
+        function confirmClearHistory() {
+            showModal(
+                "Clear History",
+                "Are you sure you want to clear all your query history?<br>This action cannot be undone.",
+                async () => {
+                    await clearAllHistory();
+                }
+            );
+        }
+
+        async function clearAllHistory() {
+            try {
+                const response = await fetch("/history/clear", {
+                    method: "DELETE"
+                });
+
+                if (response.ok) {
+                    showToast("Query history cleared successfully", "success");
+                    closeModal();
+                    await loadHistory();
+                } else {
+                    showToast("Failed to clear history", "error");
+                }
+            } catch (error) {
+                console.error("Failed to clear history:", error);
+                showToast("Server error occurred.", "error");
             }
         }
     </script>
