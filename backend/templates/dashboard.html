@@ -132,7 +132,7 @@
 
         .search-bar {
             width: 100%;
-            padding: 18px 25px 18px 55px;
+            padding: 18px 145px 18px 55px;
             border-radius: 35px;
             border: none;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
@@ -143,6 +143,32 @@
 
         .search-bar:focus {
             box-shadow: 0 15px 35px rgba(255, 75, 43, 0.2);
+        }
+
+        .search-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--gradient);
+            color: var(--white);
+            border: none;
+            padding: 10px 22px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            box-shadow: 0 5px 15px rgba(255, 75, 43, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-btn:hover {
+            opacity: 0.95;
+            transform: translateY(-50%) scale(1.03);
+            box-shadow: 0 5px 20px rgba(255, 75, 43, 0.3);
         }
 
         .search-icon {
@@ -891,6 +917,9 @@
         <div class="search-container">
             <i class="fas fa-search search-icon"></i>
             <input type="text" class="search-bar" id="questionInput" placeholder="Search your documents with AI...">
+            <button class="search-btn" onclick="askQuestion()">
+                <i class="fas fa-search"></i> Search
+            </button>
         </div>
         <div class="hero-actions">
             <button class="btn-primary" onclick="document.getElementById('fileInput').click()">
