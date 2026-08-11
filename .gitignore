@@ -3,10 +3,12 @@ venv/
 __pycache__/
 *.py[cod]
 
-# Sensitive data
-backend/.env
+# Sensitive data — all .env files at any level
+.env
+**/.env
 backend/users.db
 backend/uploads/
+users.db
 
 # OS files
 .DS_Store
