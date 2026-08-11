@@ -1,112 +1,153 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>DocSearch AI</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocSearch AI – Sign In</title>
+    <meta name="description" content="Sign in or create your DocSearch AI account to start searching your documents intelligently.">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body>
 
     <!-- Logo -->
     <div class="logo">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="DocSearch AI Logo">
     </div>
 
     <div class="container" id="container">
 
-        <!-- SIGN UP -->
+        <!-- ===================== SIGN UP ===================== -->
         <div class="form-container sign-up-container">
-            <form id="signupForm">
+            <form id="signupForm" autocomplete="off">
                 <h1>Create Account</h1>
 
                 <div class="social-icons">
-                    <a href="{{ url_for('facebook_login', mode='signup') }}"><i class="fab fa-facebook-f"></i></a>
-                    <a href="{{ url_for('google_login', mode='signup') }}"><i class="fab fa-google"></i></a>
-                    <a href="{{ url_for('linkedin_login', mode='signup') }}"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="{{ url_for('facebook_login', mode='signup') }}" title="Continue with Facebook">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="{{ url_for('google_login', mode='signup') }}" title="Continue with Google">
+                        <i class="fab fa-google"></i>
+                    </a>
+                    <a href="{{ url_for('linkedin_login', mode='signup') }}" title="Continue with LinkedIn">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
                 </div>
 
                 <span>or use your email for registration</span>
 
-                <input type="text" id="signupName" name="name" placeholder="Name" required>
-                <input type="email" id="signupEmail" name="email" placeholder="Email" required>
-                <input type="password" id="signupPassword" name="password" placeholder="Password" required>
+                <div class="input-wrapper">
+                    <input type="text" id="signupName" name="name" placeholder="Full Name" required>
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="input-wrapper">
+                    <input type="email" id="signupEmail" name="email" placeholder="Email Address" required>
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <div class="input-wrapper">
+                    <input type="password" id="signupPassword" name="password" placeholder="Password" required>
+                    <i class="fas fa-lock"></i>
+                </div>
 
                 <div id="signupLoader" class="loader"></div>
                 <div id="signupMessage" class="message"></div>
 
-                <button type="submit" id="signupBtn">SIGN UP</button>
+                <button type="submit" id="signupBtn"><span>SIGN UP</span></button>
             </form>
         </div>
 
-        <!-- SIGN IN -->
+        <!-- ===================== SIGN IN ===================== -->
         <div class="form-container sign-in-container">
-            <form id="signinForm">
+
+            <!-- Sign In Form -->
+            <form id="signinForm" autocomplete="off">
                 <h1>Sign In</h1>
 
                 <div class="social-icons">
-                    <a href="{{ url_for('facebook_login', mode='signin') }}"><i class="fab fa-facebook-f"></i></a>
-                    <a href="{{ url_for('google_login', mode='signin') }}">
+                    <a href="{{ url_for('facebook_login', mode='signin') }}" title="Continue with Facebook">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="{{ url_for('google_login', mode='signin') }}" title="Continue with Google">
                         <i class="fab fa-google"></i>
                     </a>
-                    <a href="{{ url_for('linkedin_login', mode='signin') }}"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="{{ url_for('linkedin_login', mode='signin') }}" title="Continue with LinkedIn">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
                 </div>
 
                 <span>or use your account</span>
 
-                <input type="email" id="signinEmail" placeholder="Email" required>
-                <input type="password" id="signinPassword" placeholder="Password" required>
+                <div class="input-wrapper">
+                    <input type="email" id="signinEmail" placeholder="Email Address" required>
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <div class="input-wrapper">
+                    <input type="password" id="signinPassword" placeholder="Password" required>
+                    <i class="fas fa-lock"></i>
+                </div>
+
                 <a href="#" id="forgotPasswordLink">Forgot your password?</a>
 
                 <div id="signinLoader" class="loader"></div>
                 <div id="signinMessage" class="message"></div>
 
-                <button type="submit" id="signinBtn">SIGN IN</button>
+                <button type="submit" id="signinBtn"><span>SIGN IN</span></button>
             </form>
 
-            <!-- FORGOT PASSWORD FORM (Initially Hidden) -->
+            <!-- Forgot Password Form (Initially Hidden) -->
             <form id="forgotPasswordForm" style="display: none;">
                 <h1>Reset Password</h1>
-                <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Enter your email to receive a password reset link.</p>
-                
-                <input type="email" id="forgotEmail" placeholder="Email" required>
-                
+                <p class="form-desc">Enter your email address and we'll send you a link to reset your password.</p>
+
+                <div class="input-wrapper">
+                    <input type="email" id="forgotEmail" placeholder="Email Address" required>
+                    <i class="fas fa-envelope"></i>
+                </div>
+
                 <div id="forgotLoader" class="loader"></div>
                 <div id="forgotMessage" class="message"></div>
 
-                <div style="display: flex; gap: 10px; width: 100%; justify-content: center;">
-                    <button type="button" id="backToSignIn" class="ghost" style="color: #ff4b2b; border-color: #ff4b2b; padding: 10px 25px;">Back</button>
-                    <button type="submit" id="forgotBtn" style="padding: 10px 25px;">SEND LINK</button>
+                <div class="forgot-btn-row">
+                    <button type="button" id="backToSignIn">Back</button>
+                    <button type="submit" id="forgotBtn"><span>SEND LINK</span></button>
                 </div>
             </form>
 
-            <!-- RESET PASSWORD FORM (Initially Hidden) -->
+            <!-- Reset Password Form (Initially Hidden) -->
             <form id="resetPasswordForm" style="display: none;">
                 <h1>New Password</h1>
-                <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Enter your new password below.</p>
-                
+                <p class="form-desc">Enter your new password below to regain access to your account.</p>
+
                 <input type="hidden" id="resetEmail">
-                <input type="password" id="newPassword" placeholder="New Password" required minlength="6">
-                
+                <div class="input-wrapper">
+                    <input type="password" id="newPassword" placeholder="New Password" required minlength="6">
+                    <i class="fas fa-key"></i>
+                </div>
+
                 <div id="resetLoader" class="loader"></div>
                 <div id="resetMessage" class="message"></div>
 
-                <button type="submit" id="resetBtn">UPDATE PASSWORD</button>
+                <button type="submit" id="resetBtn"><span>UPDATE PASSWORD</span></button>
             </form>
+
         </div>
 
-        <!-- OVERLAY -->
+        <!-- ===================== OVERLAY ===================== -->
         <div class="overlay-container">
             <div class="overlay">
                 <div class="overlay-panel overlay-left">
                     <h1>Welcome Back!</h1>
-                    <p>To keep connected with us please login</p>
+                    <p>To keep connected with us please login with your personal info</p>
                     <button class="ghost" id="signIn" type="button">SIGN IN</button>
                 </div>
                 <div class="overlay-panel overlay-right">
                     <h1>Hello, Friend!</h1>
-                    <p>Enter your personal details and start journey with us</p>
+                    <p>Enter your personal details and start your journey with us</p>
                     <button class="ghost" id="signUp" type="button">SIGN UP</button>
                 </div>
             </div>
@@ -114,7 +155,7 @@
 
     </div>
 
-    <!-- SUCCESS OVERLAY -->
+    <!-- ===================== SUCCESS OVERLAY ===================== -->
     <div class="success-overlay" id="successOverlay">
         <div class="success-box">
             <i class="fas fa-check-circle"></i>
@@ -125,21 +166,21 @@
 
     <script>
 
-        /* ================= ANIMATION ================= */
+        /* ================= PANEL ANIMATION ================= */
 
         const container = document.getElementById('container');
         const signUpButton = document.getElementById('signUp');
         const signInButton = document.getElementById('signIn');
 
         signUpButton.addEventListener('click', () => {
-            console.log("Switching to Sign Up panel");
             container.classList.add("right-panel-active");
         });
 
         signInButton.addEventListener('click', () => {
-            console.log("Switching to Sign In panel");
             container.classList.remove("right-panel-active");
         });
+
+        /* ================= SOCIAL LOGIN ================= */
 
         // Check for social login success on page load
         window.addEventListener('load', () => {
@@ -149,12 +190,9 @@
             const email = urlParams.get('email');
 
             if (mode === 'reset' && email) {
-                // Show the reset password form
                 signinForm.style.display = 'none';
                 document.getElementById('resetPasswordForm').style.display = 'flex';
                 document.getElementById('resetEmail').value = email;
-                
-                // Remove parameters from URL
                 const newUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
                 return;
@@ -162,30 +200,32 @@
 
             if (isSocialSuccess) {
                 const provider = urlParams.get('provider') || 'social';
-                console.log(`Social success detected! Mode: ${mode}, Provider: ${provider}`);
-
-                // If they were on the Sign Up panel, make sure we show it before the popup
                 if (mode === 'signup') {
                     container.classList.add("right-panel-active");
                 }
-
-                // Remove the parameters from URL immediately
                 const newUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
 
                 const capitalizedProvider = provider.charAt(0).toUpperCase() + provider.slice(1);
-                const successMsg = mode === 'signup' 
-                    ? `Account Created with ${capitalizedProvider}! Welcome to DocSearch AI.` 
+                const successMsg = mode === 'signup'
+                    ? `Account Created with ${capitalizedProvider}! Welcome to DocSearch AI.`
                     : `Login Successful with ${capitalizedProvider}! Welcome back.`;
-                
+
                 showSuccess(successMsg, "/dashboard?login_success=true");
             }
+        });
+
+        // Social icon click — show spinner
+        document.querySelectorAll('.social-icons a').forEach(link => {
+            link.addEventListener('click', function (e) {
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                this.style.pointerEvents = 'none';
+            });
         });
 
         /* ================= HELPERS ================= */
 
         function showSuccess(message, redirectUrl = null) {
-            console.log("Success detected.", redirectUrl ? "Redirecting to: " + redirectUrl : "");
             const overlay = document.getElementById("successOverlay");
             const successMsg = document.getElementById("successMessage");
             successMsg.textContent = message;
@@ -194,22 +234,13 @@
             if (redirectUrl) {
                 setTimeout(() => {
                     window.location.href = redirectUrl;
-                }, 1500);
+                }, 1600);
             } else {
                 setTimeout(() => {
                     overlay.style.display = "none";
-                }, 2500);
+                }, 2600);
             }
         }
-
-        // Show a simple processing state for Social Icons
-        document.querySelectorAll('.social-icons a').forEach(link => {
-            link.addEventListener('click', function (e) {
-                // Don't show the success overlay yet, just indicate loading
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                this.style.pointerEvents = 'none';
-            });
-        });
 
         /* ================= SIGN UP ================= */
 
@@ -224,7 +255,6 @@
             const message = document.getElementById("signupMessage");
             const btn = document.getElementById("signupBtn");
 
-            // Reset and Show Loader
             message.style.display = "none";
             message.className = "message";
             loader.style.display = "block";
@@ -233,20 +263,16 @@
             try {
                 const response = await fetch("/signup", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ name, email, password })
                 });
 
                 const data = await response.json();
-
                 loader.style.display = "none";
                 btn.disabled = false;
 
                 if (response.ok) {
                     showSuccess("Account Created Successfully! Please Sign In.");
-                    // Switch to sign in panel
                     setTimeout(() => {
                         container.classList.remove("right-panel-active");
                     }, 2000);
@@ -255,7 +281,6 @@
                     message.className = "message error";
                     message.style.display = "block";
                 }
-
             } catch (error) {
                 loader.style.display = "none";
                 btn.disabled = false;
@@ -291,7 +316,6 @@
             const message = document.getElementById("forgotMessage");
             const btn = document.getElementById("forgotBtn");
 
-            // Reset and Show Loader
             message.style.display = "none";
             message.className = "message";
             loader.style.display = "block";
@@ -300,14 +324,11 @@
             try {
                 const response = await fetch("/forgot-password", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ email })
                 });
 
                 const data = await response.json();
-
                 loader.style.display = "none";
                 btn.disabled = false;
 
@@ -322,7 +343,6 @@
                     message.className = "message error";
                     message.style.display = "block";
                 }
-
             } catch (error) {
                 loader.style.display = "none";
                 btn.disabled = false;
@@ -373,6 +393,7 @@
                 loader.style.display = "none";
                 btn.disabled = false;
                 message.textContent = "Server Error";
+                message.className = "message error";
                 message.style.display = "block";
             }
         });
@@ -389,7 +410,6 @@
             const message = document.getElementById("signinMessage");
             const btn = document.getElementById("signinBtn");
 
-            // Reset and Show Loader
             message.style.display = "none";
             message.className = "message";
             loader.style.display = "block";
@@ -398,9 +418,7 @@
             try {
                 const response = await fetch("/signin", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ email, password })
                 });
 
@@ -416,7 +434,6 @@
                     message.className = "message error";
                     message.style.display = "block";
                 }
-
             } catch (error) {
                 loader.style.display = "none";
                 btn.disabled = false;
