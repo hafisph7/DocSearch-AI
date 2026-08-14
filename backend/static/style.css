@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 /* ================= RESET & BASE ================= */
 
@@ -9,21 +9,25 @@
 }
 
 :root {
-    --primary: #ff416c;
-    --primary-dark: #e8294c;
-    --primary-light: #ff6b8a;
-    --gradient: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
-    --gradient-hover: linear-gradient(135deg, #e8294c 0%, #e03e24 100%);
+    --primary: #0f766e;
+    --primary-dark: #064e3b;
+    --primary-light: #14b8a6;
+    --primary-mint: #e6f4f1;
+    --accent-green: #10b981;
+    --gradient: linear-gradient(135deg, #0f766e 0%, #064e3b 100%);
+    --gradient-hover: linear-gradient(135deg, #115e59 0%, #022c22 100%);
+    --gradient-mint: linear-gradient(135deg, #e6f4f1 0%, #d1fae5 100%);
     --white: #ffffff;
-    --bg: #f0f2f5;
-    --text-dark: #1a1a2e;
-    --text-muted: #6b7280;
-    --input-bg: #f3f4f6;
-    --input-focus-bg: #e8eaed;
-    --border: #e5e7eb;
-    --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
-    --shadow-md: 0 8px 24px rgba(0,0,0,0.12);
-    --shadow-lg: 0 20px 60px rgba(0,0,0,0.18), 0 8px 20px rgba(0,0,0,0.12);
+    --bg: #f4f9f8;
+    --text-dark: #0f172a;
+    --text-muted: #64748b;
+    --input-bg: #f8fafc;
+    --input-focus-bg: #ffffff;
+    --border: #e2e8f0;
+    --border-mint: #ccede7;
+    --shadow-sm: 0 2px 8px rgba(15, 118, 110, 0.06);
+    --shadow-md: 0 8px 24px rgba(15, 118, 110, 0.1);
+    --shadow-lg: 0 20px 60px rgba(6, 78, 59, 0.14), 0 8px 20px rgba(15, 118, 110, 0.08);
     --radius: 20px;
     --transition: 0.6s cubic-bezier(0.68, -0.06, 0.27, 1.06);
 }
@@ -35,34 +39,35 @@ body {
     align-items: center;
     min-height: 100vh;
     font-family: 'Inter', Arial, sans-serif;
-    overflow: hidden;
+    overflow-x: hidden;
+    color: var(--text-dark);
 }
 
-/* Animated background blobs */
-body::before,
-body::after {
+/* Animated background blobs for login page */
+body.login-page::before,
+body.login-page::after {
     content: '';
     position: fixed;
     border-radius: 50%;
-    filter: blur(80px);
-    opacity: 0.35;
+    filter: blur(90px);
+    opacity: 0.25;
     pointer-events: none;
     z-index: 0;
 }
 
-body::before {
+body.login-page::before {
     width: 500px;
     height: 500px;
-    background: radial-gradient(circle, #ff416c, #ff4b2b);
+    background: radial-gradient(circle, #0f766e, #10b981);
     top: -150px;
     right: -100px;
     animation: floatBlob1 8s ease-in-out infinite alternate;
 }
 
-body::after {
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, #a78bfa, #818cf8);
+body.login-page::after {
+    width: 450px;
+    height: 450px;
+    background: radial-gradient(circle, #34d399, #059669);
     bottom: -120px;
     left: -80px;
     animation: floatBlob2 10s ease-in-out infinite alternate;
@@ -80,20 +85,37 @@ body::after {
 
 /* ================= LOGO ================= */
 
-.logo {
+.logo-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    color: var(--text-dark);
+    text-decoration: none;
+}
+
+.logo-header i {
+    color: var(--primary);
+    font-size: 24px;
+    background: var(--primary-mint);
+    padding: 8px;
+    border-radius: 10px;
+}
+
+.logo-header span.highlight {
+    color: var(--primary);
+}
+
+.login-page .logo {
     position: fixed;
-    top: 24px;
-    left: 36px;
+    top: 28px;
+    left: 40px;
     z-index: 200;
 }
 
-.logo img {
-    width: 200px;
-    height: auto;
-    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.12));
-}
-
-/* ================= CONTAINER ================= */
+/* ================= LOGIN CONTAINER ================= */
 
 .container {
     background: var(--white);
@@ -101,10 +123,11 @@ body::after {
     box-shadow: var(--shadow-lg);
     position: relative;
     overflow: hidden;
-    width: 860px;
-    max-width: 98vw;
-    min-height: 520px;
+    width: 880px;
+    max-width: 96vw;
+    min-height: 540px;
     z-index: 10;
+    border: 1px solid var(--border-mint);
 }
 
 /* ================= FORM CONTAINERS ================= */
@@ -145,7 +168,7 @@ form {
     background: var(--white);
     display: flex;
     flex-direction: column;
-    padding: 52px 44px;
+    padding: 48px 44px;
     height: 100%;
     justify-content: center;
     align-items: center;
@@ -154,19 +177,19 @@ form {
 }
 
 form h1 {
-    font-size: 26px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 28px;
     font-weight: 800;
     color: var(--text-dark);
     letter-spacing: -0.5px;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
 }
 
 form > span {
-    font-size: 12.5px;
+    font-size: 13px;
     color: var(--text-muted);
     font-weight: 400;
-    margin-bottom: 14px;
-    letter-spacing: 0.1px;
+    margin-bottom: 16px;
 }
 
 /* ================= INPUT FIELDS ================= */
@@ -174,7 +197,7 @@ form > span {
 .input-wrapper {
     position: relative;
     width: 100%;
-    margin: 6px 0;
+    margin: 7px 0;
 }
 
 .input-wrapper i {
@@ -196,11 +219,11 @@ form > span {
 
 input {
     background: var(--input-bg);
-    border: 1.5px solid transparent;
-    padding: 12px 14px 12px 38px;
+    border: 1.5px solid var(--border);
+    padding: 13px 14px 13px 40px;
     width: 100%;
-    border-radius: 10px;
-    font-size: 13.5px;
+    border-radius: 12px;
+    font-size: 14px;
     font-family: 'Inter', sans-serif;
     color: var(--text-dark);
     outline: none;
@@ -208,17 +231,17 @@ input {
 }
 
 input::placeholder {
-    color: #adb5bd;
+    color: #94a3b8;
     font-weight: 400;
 }
 
 input:focus {
     border-color: var(--primary);
     background: var(--white);
-    box-shadow: 0 0 0 3px rgba(255, 65, 108, 0.12);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
 }
 
-/* ================= BUTTON ================= */
+/* ================= BUTTONS ================= */
 
 button[type="submit"],
 button[type="button"]:not(.ghost):not(#signIn):not(#signUp):not(#backToSignIn) {
@@ -228,15 +251,15 @@ button[type="button"]:not(.ghost):not(#signIn):not(#signUp):not(#backToSignIn) {
     color: var(--white);
     cursor: pointer;
     font-family: 'Inter', sans-serif;
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 700;
-    letter-spacing: 1.2px;
-    margin-top: 14px;
-    padding: 13px 46px;
+    letter-spacing: 1px;
+    margin-top: 16px;
+    padding: 14px 44px;
     position: relative;
     text-transform: uppercase;
     transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 6px 20px rgba(255, 65, 108, 0.38);
+    box-shadow: 0 6px 20px rgba(15, 118, 110, 0.35);
     overflow: hidden;
 }
 
@@ -254,7 +277,7 @@ button[type="button"]:not(.ghost)::after {
 button[type="submit"]:hover,
 button[type="button"]:not(.ghost):hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 28px rgba(255, 65, 108, 0.48);
+    box-shadow: 0 10px 28px rgba(15, 118, 110, 0.45);
 }
 
 button[type="submit"]:hover::after,
@@ -293,8 +316,8 @@ button.ghost,
     font-family: 'Inter', sans-serif;
     font-size: 12px;
     font-weight: 700;
-    letter-spacing: 1.2px;
-    padding: 11px 40px;
+    letter-spacing: 1px;
+    padding: 12px 40px;
     text-transform: uppercase;
     transition: background 0.25s, color 0.25s, transform 0.2s;
     margin-top: 6px;
@@ -316,7 +339,7 @@ button.ghost:hover,
 }
 
 #backToSignIn:hover {
-    background: rgba(255, 65, 108, 0.08);
+    background: var(--primary-mint);
     transform: translateY(-1px);
 }
 
@@ -324,10 +347,10 @@ button.ghost:hover,
 
 #forgotPasswordLink {
     color: var(--text-muted);
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 500;
     text-decoration: none;
-    margin: 10px 0 2px;
+    margin: 12px 0 4px;
     transition: color 0.2s;
     display: inline-block;
 }
@@ -341,8 +364,8 @@ button.ghost:hover,
 
 .social-icons {
     display: flex;
-    gap: 10px;
-    margin-bottom: 16px;
+    gap: 12px;
+    margin-bottom: 18px;
 }
 
 .social-icons a {
@@ -351,11 +374,11 @@ button.ghost:hover,
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    height: 42px;
-    width: 42px;
-    color: #555;
+    height: 44px;
+    width: 44px;
+    color: #475569;
     text-decoration: none;
-    font-size: 15px;
+    font-size: 16px;
     transition: border-color 0.25s, color 0.25s, background 0.25s, transform 0.2s, box-shadow 0.25s;
     background: var(--white);
 }
@@ -366,21 +389,21 @@ button.ghost:hover,
 }
 
 .social-icons a:has(.fa-facebook-f):hover {
-    border-color: #3b5998;
-    color: #3b5998;
-    background: #f0f3fa;
+    border-color: #1877f2;
+    color: #1877f2;
+    background: #eef5ff;
 }
 
 .social-icons a:has(.fa-google):hover {
-    border-color: #db4437;
-    color: #db4437;
-    background: #fdf1f0;
+    border-color: #ea4335;
+    color: #ea4335;
+    background: #fef2f2;
 }
 
 .social-icons a:has(.fa-linkedin-in):hover {
-    border-color: #0077b5;
-    color: #0077b5;
-    background: #f0f7fb;
+    border-color: #0a66c2;
+    color: #0a66c2;
+    background: #f0f7ff;
 }
 
 /* ================= OVERLAY ================= */
@@ -433,12 +456,13 @@ button.ghost:hover,
     content: '';
     position: absolute;
     inset: 0;
-    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.08'%3E%3Ccircle cx='30' cy='30' r='2.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
     pointer-events: none;
 }
 
 .overlay-panel h1 {
-    font-size: 30px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 32px;
     font-weight: 800;
     letter-spacing: -0.5px;
     margin-bottom: 14px;
@@ -451,7 +475,7 @@ button.ghost:hover,
     margin-bottom: 28px;
     opacity: 0.9;
     font-weight: 400;
-    max-width: 220px;
+    max-width: 240px;
 }
 
 .overlay-right {
@@ -484,13 +508,13 @@ button.ghost:hover,
 }
 
 .message.success {
-    background-color: #f0fdf4;
-    color: #15803d;
-    border: 1.5px solid #bbf7d0;
+    background-color: #ecfdf5;
+    color: #047857;
+    border: 1.5px solid #a7f3d0;
 }
 
 .loader {
-    border: 3px solid #f3f4f6;
+    border: 3px solid #f1f5f9;
     border-top: 3px solid var(--primary);
     border-radius: 50%;
     width: 28px;
@@ -513,13 +537,13 @@ button.ghost:hover,
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(10, 10, 20, 0.65);
+    background: rgba(6, 78, 59, 0.4);
     display: none;
     justify-content: center;
     align-items: center;
     z-index: 9999;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 .success-box {
@@ -527,10 +551,11 @@ button.ghost:hover,
     padding: 48px 52px;
     border-radius: 24px;
     text-align: center;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.2);
     transform: scale(0.7) translateY(20px);
     opacity: 0;
     animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.1s forwards;
+    border: 1px solid var(--border-mint);
 }
 
 @keyframes popIn {
@@ -542,15 +567,13 @@ button.ghost:hover,
 
 .success-box i {
     font-size: 72px;
-    background: var(--gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--primary);
     margin-bottom: 18px;
     display: block;
 }
 
 .success-box h2 {
+    font-family: 'Outfit', sans-serif;
     color: var(--text-dark);
     margin-bottom: 10px;
     font-size: 26px;
@@ -597,13 +620,9 @@ button.ghost:hover,
         border-radius: 0;
     }
 
-    .logo {
-        top: 14px;
-        left: 16px;
-    }
-
-    .logo img {
-        width: 150px;
+    .login-page .logo {
+        top: 16px;
+        left: 20px;
     }
 
     form {

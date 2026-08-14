@@ -10,14 +10,23 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
-<body>
+<body class="login-page">
 
-    <!-- Logo -->
+    <!-- Logo Header -->
     <div class="logo">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="DocSearch AI Logo">
+        <a href="/" class="logo-header">
+            <svg width="34" height="34" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="40" height="40" rx="10" fill="#E6F4F1"/>
+                <path d="M13 10H23L29 16V28C29 29.1046 28.1046 30 27 30H13C11.8954 30 11 29.1046 11 28V12C11 10.8954 11.8954 10 13 10Z" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M22 10V17H29" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="21" cy="22" r="5" stroke="#0F766E" stroke-width="2.2" fill="#E6F4F1"/>
+                <line x1="24.5" y1="25.5" x2="28" y2="29" stroke="#0F766E" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+            <span>DocSearch <span class="highlight">AI</span></span>
+        </a>
     </div>
 
     <div class="container" id="container">
@@ -165,9 +174,6 @@
     </div>
 
     <script>
-
-        /* ================= PANEL ANIMATION ================= */
-
         const container = document.getElementById('container');
         const signUpButton = document.getElementById('signUp');
         const signInButton = document.getElementById('signIn');
@@ -182,7 +188,6 @@
 
         /* ================= SOCIAL LOGIN ================= */
 
-        // Check for social login success on page load
         window.addEventListener('load', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const isSocialSuccess = urlParams.get('social_success') === 'true';
@@ -215,7 +220,6 @@
             }
         });
 
-        // Social icon click — show spinner
         document.querySelectorAll('.social-icons a').forEach(link => {
             link.addEventListener('click', function (e) {
                 this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -442,7 +446,6 @@
                 message.style.display = "block";
             }
         });
-
     </script>
 
 </body>
