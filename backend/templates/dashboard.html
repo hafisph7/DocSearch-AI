@@ -370,24 +370,32 @@
         /* Handwritten annotation graphic on top right */
         .handwriting-note {
             position: absolute;
-            top: 28px;
-            right: 48px;
+            top: 24px;
+            right: 70px;
             font-family: 'Caveat', cursive;
-            font-size: 18px;
+            font-size: 22px;
+            font-weight: 700;
             color: #0f766e;
-            transform: rotate(6deg);
+            transform: rotate(-6deg);
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-items: flex-start;
             pointer-events: none;
-            line-height: 1.2;
+            line-height: 1.15;
+            z-index: 10;
+        }
+
+        .handwriting-note span {
+            text-align: left;
+            display: block;
         }
 
         .handwriting-note svg {
-            width: 40px;
-            height: 30px;
-            margin-top: 2px;
-            stroke: #0f766e;
+            width: 100px;
+            height: 75px;
+            margin-top: 4px;
+            margin-left: -35px;
+            overflow: visible;
         }
 
         /* Leaf decor bottom right */
@@ -1331,21 +1339,7 @@
             }
 
             .handwriting-note {
-                position: relative;
-                top: auto;
-                right: auto;
-                transform: none;
-                margin: 0 auto 10px;
-                display: flex;
-                flex-direction: row;
-                align-items: center;
-                justify-content: center;
-                gap: 6px;
-                font-size: 15px;
-            }
-
-            .handwriting-note svg {
-                display: none;
+                display: none !important;
             }
 
             .hero-banner h1 {
@@ -1685,9 +1679,10 @@
 
                 <!-- Decorative handwritten annotation on top right -->
                 <div class="handwriting-note">
-                    <span>Your documents.<br>Smarter answers.</span>
-                    <svg viewBox="0 0 50 40" fill="none">
-                        <path d="M5 5C15 25 35 25 42 12M42 12L34 14M42 12L44 20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <span>Your<br>documents.<br>Smarter<br>answers.</span>
+                    <svg viewBox="0 0 100 75" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M 85,5 C 75,45 50,70 15,70" stroke="#0f766e" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+                        <path d="M 15,70 L 30,60 M 15,70 L 28,80" stroke="#0f766e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                     </svg>
                 </div>
 
