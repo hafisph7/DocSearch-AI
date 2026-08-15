@@ -1154,15 +1154,367 @@
             to { transform: translateX(0); opacity: 1; }
         }
 
-        /* Responsive */
-        @media (max-width: 900px) {
+        /* Mobile Nav & Overlay Styles */
+        .mobile-nav-toggle {
+            display: none;
+            background: transparent;
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 18px;
+            color: var(--text-dark);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mobile-nav-toggle:hover {
+            background: var(--primary-mint);
+            color: var(--primary);
+        }
+
+        .mobile-nav-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 2400;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .mobile-nav-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        .mobile-nav-drawer {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 280px;
+            height: 100vh;
+            background: var(--white);
+            z-index: 2500;
+            box-shadow: -8px 0 24px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .mobile-nav-drawer.active {
+            transform: translateX(-300px);
+        }
+
+        .mobile-drawer-header {
+            padding: 20px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--mint-bg);
+        }
+
+        .mobile-user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mobile-user-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mobile-user-name {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-dark);
+        }
+
+        .mobile-user-status {
+            font-size: 11px;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .mobile-drawer-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 6px;
+        }
+
+        .mobile-drawer-body {
+            padding: 20px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .nav-item.logout-link {
+            color: #ef4444;
+        }
+
+        .nav-item.logout-link i {
+            color: #ef4444;
+        }
+
+        .nav-item.logout-link:hover {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+
+        /* Responsive Media Query for Mobile (<= 768px) */
+        @media screen and (max-width: 768px) {
+            nav {
+                height: 64px;
+                padding: 0 16px;
+            }
+
+            .nav-logo {
+                font-size: 19px;
+                gap: 8px;
+            }
+
+            .nav-logo-icon {
+                width: 32px;
+                height: 32px;
+            }
+
+            .nav-logo-icon svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            .nav-right {
+                display: none;
+            }
+
+            .mobile-nav-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
             .app-body {
                 flex-direction: column;
-                padding: 16px;
+                padding: 16px 12px 32px;
+                gap: 20px;
             }
-            aside.sidebar { width: 100%; }
-            .features-row { grid-template-columns: 1fr; }
-            .resources-grid { grid-template-columns: 1fr; }
+
+            aside.sidebar {
+                display: none !important;
+            }
+
+            main.main-content {
+                width: 100%;
+                gap: 18px;
+            }
+
+            /* Mobile Hero Banner */
+            .hero-banner {
+                padding: 24px 16px 20px;
+                border-radius: 16px;
+                text-align: center;
+            }
+
+            .handwriting-note {
+                position: relative;
+                top: auto;
+                right: auto;
+                transform: none;
+                margin: 0 auto 10px;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                font-size: 15px;
+            }
+
+            .handwriting-note svg {
+                display: none;
+            }
+
+            .hero-banner h1 {
+                font-size: 22px;
+                line-height: 1.3;
+                margin-bottom: 6px;
+            }
+
+            .hero-banner p.hero-subtitle {
+                font-size: 13px;
+                margin-bottom: 18px;
+            }
+
+            /* Mobile Search Box */
+            .search-box-wrapper {
+                max-width: 100%;
+                margin-bottom: 14px;
+            }
+
+            .search-box {
+                padding: 12px 14px 12px 42px;
+                font-size: 14px;
+                border-radius: 30px;
+                width: 100%;
+            }
+
+            .search-icon-left {
+                left: 16px;
+                font-size: 16px;
+            }
+
+            .btn-search-submit {
+                position: relative;
+                right: auto;
+                top: auto;
+                transform: none;
+                margin-top: 10px;
+                width: 100%;
+                height: 44px;
+                justify-content: center;
+                border-radius: 30px;
+                font-size: 14px;
+                font-weight: 700;
+            }
+
+            .btn-search-submit:hover {
+                transform: none;
+            }
+
+            .format-pills {
+                flex-wrap: wrap;
+                gap: 6px 10px;
+                font-size: 11.5px;
+            }
+
+            /* Mobile Upload Card */
+            .upload-card {
+                padding: 20px 14px;
+                border-radius: 16px;
+            }
+
+            .upload-circle-icon {
+                width: 46px;
+                height: 46px;
+                font-size: 18px;
+                margin-bottom: 10px;
+            }
+
+            .upload-card h3 {
+                font-size: 15px;
+            }
+
+            /* Mobile AI Response */
+            .ai-response-container {
+                padding: 20px 16px;
+                border-radius: 16px;
+            }
+
+            .ai-header {
+                font-size: 16px;
+            }
+
+            .ai-body {
+                font-size: 14px;
+                line-height: 1.6;
+            }
+
+            .resources-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            /* Mobile Documents Section */
+            .documents-section {
+                gap: 14px;
+            }
+
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .section-title h2 {
+                font-size: 19px;
+            }
+
+            .section-title p {
+                font-size: 12.5px;
+            }
+
+            .view-controls {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            /* Mobile Document Cards */
+            .doc-item-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 14px;
+                border-radius: 14px;
+                position: relative;
+            }
+
+            .doc-left-group {
+                width: 100%;
+                gap: 12px;
+            }
+
+            .doc-details-col {
+                flex: 1;
+                min-width: 0;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+            }
+
+            .doc-details-col h4 {
+                font-size: 14px;
+                line-height: 1.35;
+                padding-right: 24px;
+            }
+
+            .doc-meta {
+                font-size: 11.5px;
+                flex-wrap: wrap;
+                gap: 6px 10px;
+            }
+
+            .doc-action-btn {
+                position: absolute;
+                top: 14px;
+                right: 14px;
+            }
+
+            .doc-grid-mode {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .selection-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .btn-delete-selected {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .features-row {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
         }
     </style>
 </head>
@@ -1203,7 +1555,70 @@
                 </button>
             </form>
         </div>
+
+        <!-- Mobile Menu Toggle Button (Visible <= 768px) -->
+        <button class="mobile-nav-toggle" id="mobileNavToggle" onclick="toggleMobileNav()" title="Open Navigation Menu">
+            <i class="fas fa-bars"></i>
+        </button>
     </nav>
+
+    <!-- MOBILE NAVIGATION DRAWER -->
+    <div class="mobile-nav-overlay" id="mobileNavOverlay" onclick="toggleMobileNav()"></div>
+    <div class="mobile-nav-drawer" id="mobileNavDrawer">
+        <div class="mobile-drawer-header">
+            <div class="mobile-user-info">
+                <div class="user-avatar">
+                    {% if session.get('user_name') %}
+                        {{ session.get('user_name')[0]|upper }}
+                    {% else %}
+                        H
+                    {% endif %}
+                </div>
+                <div class="mobile-user-text">
+                    <span class="mobile-user-name">{{ session.get('user_name') or 'hafis' }}</span>
+                    <span class="mobile-user-status">Online</span>
+                </div>
+            </div>
+            <button class="mobile-drawer-close" onclick="toggleMobileNav()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="mobile-drawer-body">
+            <div class="nav-menu">
+                <a href="/dashboard" class="nav-item active" onclick="toggleMobileNav()">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </a>
+                <a href="#librarySection" onclick="scrollToLibrary(); toggleMobileNav();" class="nav-item">
+                    <i class="far fa-folder-open"></i>
+                    <span>My Documents</span>
+                </a>
+                <a href="javascript:void(0)" onclick="toggleSidebar(); toggleMobileNav();" class="nav-item">
+                    <i class="far fa-clock"></i>
+                    <span>History</span>
+                </a>
+                <a href="/logout" class="nav-item logout-link">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+
+            <!-- PROMO CARD -->
+            <div class="sidebar-promo-card">
+                <div class="promo-bot-icon">
+                    <i class="fas fa-robot"></i>
+                    <i class="fas fa-sparkles promo-sparkles"></i>
+                </div>
+                <h4>AI-Powered Search</h4>
+                <p>Ask anything about your documents and get instant, accurate answers.</p>
+                <button class="btn-learn-more" onclick="focusSearch(); toggleMobileNav();">
+                    <span>Learn More</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- APP BODY -->
     <div class="app-body">
@@ -1686,6 +2101,15 @@
                 historyData = await res.json();
                 renderHistory();
             } catch (err) {}
+        }
+
+        function toggleMobileNav() {
+            const drawer = document.getElementById("mobileNavDrawer");
+            const overlay = document.getElementById("mobileNavOverlay");
+            if (drawer && overlay) {
+                drawer.classList.toggle("active");
+                overlay.classList.toggle("active");
+            }
         }
 
         function toggleSidebar() {

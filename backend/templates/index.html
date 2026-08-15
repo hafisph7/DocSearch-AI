@@ -31,6 +31,12 @@
 
     <div class="container" id="container">
 
+        <!-- Mobile Auth Switcher (Visible only on mobile <= 768px) -->
+        <div class="mobile-auth-tabs">
+            <button type="button" class="mobile-tab-btn active" id="mobileTabSignIn" onclick="switchMobileTab('signin')">Sign In</button>
+            <button type="button" class="mobile-tab-btn" id="mobileTabSignUp" onclick="switchMobileTab('signup')">Sign Up</button>
+        </div>
+
         <!-- ===================== SIGN UP ===================== -->
         <div class="form-container sign-up-container">
             <form id="signupForm" autocomplete="off">
@@ -178,12 +184,26 @@
         const signUpButton = document.getElementById('signUp');
         const signInButton = document.getElementById('signIn');
 
+        function switchMobileTab(mode) {
+            const tabSignIn = document.getElementById('mobileTabSignIn');
+            const tabSignUp = document.getElementById('mobileTabSignUp');
+            if (mode === 'signup') {
+                container.classList.add("right-panel-active");
+                if (tabSignUp) tabSignUp.classList.add('active');
+                if (tabSignIn) tabSignIn.classList.remove('active');
+            } else {
+                container.classList.remove("right-panel-active");
+                if (tabSignIn) tabSignIn.classList.add('active');
+                if (tabSignUp) tabSignUp.classList.remove('active');
+            }
+        }
+
         signUpButton.addEventListener('click', () => {
-            container.classList.add("right-panel-active");
+            switchMobileTab('signup');
         });
 
         signInButton.addEventListener('click', () => {
-            container.classList.remove("right-panel-active");
+            switchMobileTab('signin');
         });
 
         /* ================= SOCIAL LOGIN ================= */
@@ -193,6 +213,10 @@
             const isSocialSuccess = urlParams.get('social_success') === 'true';
             const mode = urlParams.get('mode') || 'signin';
             const email = urlParams.get('email');
+
+            if (mode === 'signup') {
+                switchMobileTab('signup');
+            }
 
             if (mode === 'reset' && email) {
                 signinForm.style.display = 'none';
@@ -206,7 +230,7 @@
             if (isSocialSuccess) {
                 const provider = urlParams.get('provider') || 'social';
                 if (mode === 'signup') {
-                    container.classList.add("right-panel-active");
+                    switchMobileTab('signup');
                 }
                 const newUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
