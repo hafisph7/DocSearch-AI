@@ -408,6 +408,11 @@
             position: relative;
         }
 
+        .search-input-container {
+            position: relative;
+            width: 100%;
+        }
+
         .search-box {
             width: 100%;
             background: var(--white);
@@ -432,6 +437,8 @@
             transform: translateY(-50%);
             color: var(--text-subtle);
             font-size: 18px;
+            pointer-events: none;
+            z-index: 5;
         }
 
         .btn-search-submit {
@@ -1356,6 +1363,12 @@
             .search-box-wrapper {
                 max-width: 100%;
                 margin-bottom: 14px;
+                position: relative;
+            }
+
+            .search-input-container {
+                position: relative;
+                width: 100%;
             }
 
             .search-box {
@@ -1366,8 +1379,12 @@
             }
 
             .search-icon-left {
+                position: absolute;
                 left: 16px;
+                top: 50%;
+                transform: translateY(-50%);
                 font-size: 16px;
+                z-index: 5;
             }
 
             .btn-search-submit {
@@ -1685,8 +1702,10 @@
 
                 <!-- Search Input Box -->
                 <div class="search-box-wrapper">
-                    <i class="fas fa-search search-icon-left"></i>
-                    <input type="text" id="questionInput" class="search-box" placeholder="Ask anything about your documents...">
+                    <div class="search-input-container">
+                        <i class="fas fa-search search-icon-left"></i>
+                        <input type="text" id="questionInput" class="search-box" placeholder="Ask anything about your documents...">
+                    </div>
                     <button class="btn-search-submit" onclick="askQuestion()">
                         <i class="fas fa-sparkles"></i> Search
                     </button>
